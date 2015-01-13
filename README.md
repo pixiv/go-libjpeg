@@ -55,7 +55,15 @@ BenchmarkDecodeWithNativeJPEG        300          49815928 ns/op
 ...
 ```
 
-go-libjpeg is about 1.9x faster than image/jpeg.
+With libjpeg-turbo:
+```
+BenchmarkDecode                     2000           9557646 ns/op
+BenchmarkDecodeIntoRGB              1000          12676414 ns/op
+BenchmarkDecodeWithNativeJPEG        300          45836153 ns/op
+```
+
+go-libjpeg is about 1.9x faster than image/jpeg. 
+With libjpeg-turbo, it can make more faster (about 4.8x faster than image/jpeg).
 
 ### Dependencies
 
