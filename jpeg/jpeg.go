@@ -14,6 +14,10 @@ package jpeg
 #include <stdio.h>
 #include <jpeglib.h>
 
+// Uncomment below lines, if you want to build with homebrew ligjpeg-turbo in OS X.
+// #cgo LDFLAGS: -L/usr/local/opt/jpeg-turbo/lib
+// #cgo CFLAGS: -I/usr/local/opt/jpeg-turbo/include
+
 */
 import "C"
 
