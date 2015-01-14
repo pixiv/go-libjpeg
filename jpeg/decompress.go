@@ -82,7 +82,7 @@ func Decode(r io.Reader, options *DecoderOptions) (dest image.Image, err error) 
 	makeSourceManager(r, &dinfo)
 	C.jpeg_read_header(&dinfo, C.TRUE)
 
-	// setupDecoderOptions(&dinfo, options)
+	setupDecoderOptions(&dinfo, options)
 
 	switch dinfo.num_components {
 	case 1:

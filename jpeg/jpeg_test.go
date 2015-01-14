@@ -3,6 +3,7 @@ package jpeg_test
 import (
 	"bufio"
 	"fmt"
+	"image"
 	"image/color"
 	nativeJPEG "image/jpeg"
 	"os"
@@ -83,6 +84,26 @@ func TestDecode(t *testing.T) {
 	}
 }
 
+func TestDecodeScaled(t *testing.T) {
+	for _, file := range naturalImageFiles {
+		io := util.OpenFile(file)
+		fmt.Printf(" - test: %s\n", file)
+
+		img, err := jpeg.Decode(io, &jpeg.DecoderOptions{ScaleTarget: image.Rect(0, 0, 100, 100)})
+		if err != nil {
+			t.Errorf("Got Error: %v", err)
+		}
+		if got := img.Bounds().Dx(); got != 256 {
+			t.Errorf("Wrong scaled width: %v, expect: 128 (=1024/8)", got)
+		}
+		if got := img.Bounds().Dy(); got != 192 {
+			t.Errorf("Wrong scaled height: %v, expect: 192 (=768/8)", got)
+		}
+
+		util.WritePNG(img, fmt.Sprintf("TestDecodeScaled_%s.png", file))
+	}
+}
+
 func TestDecodeIntoRGBA(t *testing.T) {
 	if jpeg.SupportRGBA() != true {
 		t.Skipf("This build is not support DecodeIntoRGBA.")
@@ -102,14 +123,45 @@ func TestDecodeIntoRGBA(t *testing.T) {
 	}
 }
 
-func TestDecodeIntoRGB(t *testing.T) {
+func TestDecodeScaledIntoRGBA(t *testing.T) {
+	if jpeg.SupportRGBA() != true {
+		t.Skipf("This build is not support DecodeIntoRGBA.")
+		return
+	}
 	for _, file := range naturalImageFiles {
 		io := util.OpenFile(file)
 		fmt.Printf(" - test: %s\n", file)
 
-		img, err := jpeg.DecodeIntoRGB(io, &jpeg.DecoderOptions{})
+		img, err := jpeg.DecodeIntoRGBA(io, &jpeg.DecoderOptions{ScaleTarget: image.Rect(0, 0, 100, 100)})
 		if err != nil {
 			t.Errorf("Got Error: %v", err)
+			continue
+		}
+		if got := img.Bounds().Dx(); got != 256 {
+			t.Errorf("Wrong scaled width: %v, expect: 128 (=1024/8)", got)
+		}
+		if got := img.Bounds().Dy(); got != 192 {
+			t.Errorf("Wrong scaled height: %v, expect: 192 (=768/8)", got)
+		}
+
+		util.WritePNG(img, fmt.Sprintf("TestDecodeIntoRGBA_%s.png", file))
+	}
+}
+
+func TestDecodeScaledIntoRGB(t *testing.T) {
+	for _, file := range naturalImageFiles {
+		io := util.OpenFile(file)
+		fmt.Printf(" - test: %s\n", file)
+
+		img, err := jpeg.DecodeIntoRGB(io, &jpeg.DecoderOptions{ScaleTarget: image.Rect(0, 0, 100, 100)})
+		if err != nil {
+			t.Errorf("Got Error: %v", err)
+		}
+		if got := img.Bounds().Dx(); got != 256 {
+			t.Errorf("Wrong scaled width: %v, expect: 128 (=1024/8)", got)
+		}
+		if got := img.Bounds().Dy(); got != 192 {
+			t.Errorf("Wrong scaled height: %v, expect: 192 (=768/8)", got)
 		}
 
 		util.WritePNG(img, fmt.Sprintf("TestDecodeIntoRGB_%s.png", file))
