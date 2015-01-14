@@ -1,6 +1,8 @@
 go-libjpeg
 ==========
 
+[![Build Status](https://travis-ci.org/pixiv/go-libjpeg.svg?branch=master)](https://travis-ci.org/pixiv/go-libjpeg)
+
 An implementation of Go binding for LibJpeg (preferably libjpeg-turbo).
 
 The core codes are picked from [go-thumber](http://github.com/pixiv/go-thumber)
