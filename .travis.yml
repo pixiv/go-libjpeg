@@ -17,3 +17,8 @@ before_install:
       && export CGO_CFLAGS="-I/opt/libjpeg-turbo/include"
       && export LD_LIBRARY_PATH="/opt/libjpeg-turbo/lib64:$LD_LIBRARY_PATH"
   - cd $HOME/gopath/src/github.com/pixiv/go-libjpeg
+
+notifications:
+  webhooks:
+    - https://idobata.io/hook/travis_ci/51abfc74-a9d4-4ac7-8631-77e7e0c00401
+
