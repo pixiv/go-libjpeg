@@ -167,8 +167,7 @@ func decodeYCbCr(dinfo *C.struct_jpeg_decompress_struct) (dest *image.YCbCr, err
 	case image.YCbCrSubsampleRatio440, image.YCbCrSubsampleRatio420:
 		dest = NewYCbCrAligned(image.Rect(0, 0, int(dinfo.output_width), int(dinfo.output_height)), subsampleRatio)
 	default:
-		//dest = image.NewYCbCr(image.Rect(0, 0, int(dinfo.output_width), int(dinfo.output_height)), subsampleRatio)
-		dest = NewYCbCrAligned(image.Rect(0, 0, int(dinfo.output_width), int(dinfo.output_height)), subsampleRatio)
+		dest = image.NewYCbCr(image.Rect(0, 0, int(dinfo.output_width), int(dinfo.output_height)), subsampleRatio)
 	}
 
 	// Allocate JSAMPIMAGE to hold pointers to one iMCU worth of image data
@@ -370,8 +369,7 @@ func NewYCbCrAligned(r image.Rectangle, subsampleRatio image.YCbCrSubsampleRatio
 	yHeight := pad(h, AlignSize) + AlignSize
 	cHeight := pad(ch, AlignSize) + AlignSize
 
-	b := make([]byte, yStride*yHeight+2*cStride*cHeight)
-
+	b := make([]byte, yStride*yStride+2*cStride*cHeight)
 	return &image.YCbCr{
 		Y:              b[:yStride*yHeight],
 		Cb:             b[yStride*yHeight+0*cStride*cHeight : yStride*yHeight+1*cStride*cHeight],
