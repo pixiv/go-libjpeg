@@ -64,16 +64,14 @@ func SupportRGBA() bool {
 // Output image has YCbCr colors or 8bit Grayscale.
 func Decode(r io.Reader, options *DecoderOptions) (dest image.Image, err error) {
 	// Recover panic
-	/*
-		defer func() {
-			if r := recover(); r != nil {
-				log.Println(r)
-				if _, ok := r.(error); !ok {
-					err = fmt.Errorf("JPEG error: %v", r)
-				}
+	defer func() {
+		if r := recover(); r != nil {
+			log.Println(r)
+			if _, ok := r.(error); !ok {
+				err = fmt.Errorf("JPEG error: %v", r)
 			}
-		}()
-	*/
+		}
+	}()
 
 	var dinfo C.struct_jpeg_decompress_struct
 	var jerr C.struct_jpeg_error_mgr
