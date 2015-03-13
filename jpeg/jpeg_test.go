@@ -257,3 +257,43 @@ func TestDecodeConfig(t *testing.T) {
 		}
 	}
 }
+
+func TestNewYCbCrAlignedWithLandscape(t *testing.T) {
+	got := jpeg.NewYCbCrAligned(image.Rect(0, 0, 125, 25), image.YCbCrSubsampleRatio444)
+
+	if len(got.Y) != 6912 {
+		t.Errorf("wrong array size Y: %d, expect: 6912", len(got.Y))
+	}
+	if len(got.Cb) != 6912 {
+		t.Errorf("wrong array size Cb: %d, expect: 6912", len(got.Cb))
+	}
+	if len(got.Cr) != 6912 {
+		t.Errorf("wrong array size Cr: %d, expect: 6912", len(got.Cr))
+	}
+	if got.YStride != 144 {
+		t.Errorf("got wrong YStride: %d, expect: 128", got.YStride)
+	}
+	if got.CStride != 144 {
+		t.Errorf("got wrong CStride: %d, expect: 128", got.CStride)
+	}
+}
+
+func TestNewYCbCrAlignedWithPortrait(t *testing.T) {
+	got := jpeg.NewYCbCrAligned(image.Rect(0, 0, 25, 125), image.YCbCrSubsampleRatio444)
+
+	if len(got.Y) != 6912 {
+		t.Errorf("wrong array size Y: %d, expect: 6912", len(got.Y))
+	}
+	if len(got.Cb) != 6912 {
+		t.Errorf("wrong array size Cb: %d, expect: 6912", len(got.Cb))
+	}
+	if len(got.Cr) != 6912 {
+		t.Errorf("wrong array size Cr: %d, expect: 6912", len(got.Cr))
+	}
+	if got.YStride != 48 {
+		t.Errorf("got wrong YStride: %d, expect: 128", got.YStride)
+	}
+	if got.CStride != 48 {
+		t.Errorf("got wrong CStride: %d, expect: 128", got.CStride)
+	}
+}
