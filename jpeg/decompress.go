@@ -163,12 +163,8 @@ func decodeYCbCr(dinfo *C.struct_jpeg_decompress_struct) (dest *image.YCbCr, err
 		return nil, errors.New("Unsupported color subsampling")
 	}
 
-	switch subsampleRatio {
-	case image.YCbCrSubsampleRatio440, image.YCbCrSubsampleRatio420:
-		dest = NewYCbCrAligned(image.Rect(0, 0, int(dinfo.output_width), int(dinfo.output_height)), subsampleRatio)
-	default:
-		dest = NewYCbCrAligned(image.Rect(0, 0, int(dinfo.output_width), int(dinfo.output_height)), subsampleRatio)
-	}
+	// Allocate distination iamge
+	dest = NewYCbCrAligned(image.Rect(0, 0, int(dinfo.output_width), int(dinfo.output_height)), subsampleRatio)
 
 	// Allocate JSAMPIMAGE to hold pointers to one iMCU worth of image data
 	// this is a safe overestimate; we use the return value from
