@@ -18,7 +18,9 @@ void sourceSkip(struct jpeg_decompress_struct*, long);
 boolean sourceFill(struct jpeg_decompress_struct*);
 void sourceTerm(struct jpeg_decompress_struct*);
 
-static void* get_jpeg_resync_to_restart() {
+// _get_jpeg_resync_to_restart returns the pointer of jpeg_resync_to_restart.
+// see https://github.com/golang/go/issues/9411.
+static void* _get_jpeg_resync_to_restart() {
 	return jpeg_resync_to_restart;
 }
 
@@ -109,7 +111,7 @@ func makeSourceManager(src io.Reader, dinfo *C.struct_jpeg_decompress_struct) (m
 	mgr.pub.init_source = (*[0]byte)(C.sourceInit)
 	mgr.pub.fill_input_buffer = (*[0]byte)(C.sourceFill)
 	mgr.pub.skip_input_data = (*[0]byte)(C.sourceSkip)
-	mgr.pub.resync_to_restart = (*[0]byte)(C.get_jpeg_resync_to_restart()) // default implementation
+	mgr.pub.resync_to_restart = (*[0]byte)(C._get_jpeg_resync_to_restart())
 	mgr.pub.term_source = (*[0]byte)(C.sourceTerm)
 	mgr.pub.bytes_in_buffer = 0
 	mgr.pub.next_input_byte = nil
