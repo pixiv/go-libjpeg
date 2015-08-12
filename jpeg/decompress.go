@@ -106,7 +106,7 @@ func decodeGray(dinfo *C.struct_jpeg_decompress_struct) (dest *image.Gray, err e
 	C.jpeg_start_decompress(dinfo)
 
 	compInfo := (*[1]C.jpeg_component_info)(unsafe.Pointer(dinfo.comp_info))
-	dest = image.NewGray(image.Rect(0, 0, int(compInfo[0].downsampled_width), int(compInfo[0].downsampled_height)))
+	dest = NewGrayAligned(image.Rect(0, 0, int(compInfo[0].downsampled_width), int(compInfo[0].downsampled_height)))
 
 	var rowPtr [AlignSize]C.JSAMPROW
 	arrayPtr := [1]C.JSAMPARRAY{
@@ -341,8 +341,8 @@ func setupDecoderOptions(dinfo *C.struct_jpeg_decompress_struct, opt *DecoderOpt
 const AlignSize int = 16
 
 // NewYCbCrAligned Allocates YCbCr image with padding.
-// When subsampling, odd modes like 14x14 may be used.
-// This func add an extra AlignSize (16) padding to cover overflow from any such modes.
+// Because LibJPEG needs extra padding to decoding buffer, This func add an
+// extra AlignSize (16) padding to cover overflow from any such modes.
 func NewYCbCrAligned(r image.Rectangle, subsampleRatio image.YCbCrSubsampleRatio) *image.YCbCr {
 	w, h, cw, ch := r.Dx(), r.Dy(), 0, 0
 	switch subsampleRatio {
@@ -360,6 +360,7 @@ func NewYCbCrAligned(r image.Rectangle, subsampleRatio image.YCbCrSubsampleRatio
 		ch = h
 	}
 
+	// TODO: check the padding size to minimize memory allocation.
 	yStride := pad(w, AlignSize) + AlignSize
 	cStride := pad(cw, AlignSize) + AlignSize
 	yHeight := pad(h, AlignSize) + AlignSize
@@ -379,4 +380,21 @@ func NewYCbCrAligned(r image.Rectangle, subsampleRatio image.YCbCrSubsampleRatio
 
 func pad(a int, b int) int {
 	return (a + (b - 1)) & (^(b - 1))
+}
+
+// NewGrayAligned Allocates Grey image with padding.
+// This func add an extra padding to cover overflow from decoding image.
+func NewGrayAligned(r image.Rectangle) *image.Gray {
+	w, h := r.Dx(), r.Dy()
+
+	// TODO: check the padding size to minimize memory allocation.
+	stride := pad(w, AlignSize) + AlignSize
+	ph := pad(h, AlignSize) + AlignSize
+
+	pix := make([]uint8, stride*ph)
+	return &image.Gray{
+		Pix:    pix,
+		Stride: stride,
+		Rect:   r,
+	}
 }
