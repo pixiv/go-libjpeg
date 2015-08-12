@@ -54,7 +54,7 @@ var imageTests = []imageTest{
 	// {"testdata/video-001.cmyk.png", "testdata/video-001.cmyk.jpeg", 8 << 8},
 	{"testdata/video-001.png", "testdata/video-001.jpeg", 8 << 8},
 	{"testdata/video-001.png", "testdata/video-001.progressive.jpeg", 8 << 8},
-	// {"testdata/video-001.rgb.png", "testdata/video-001.rgb.jpeg", 8 << 8},
+	{"testdata/video-001.png", "testdata/video-001.rgb.jpeg", 8 << 16},
 	{"testdata/video-005.gray.png", "testdata/video-005.gray.jpeg", 8 << 8},
 }
 
@@ -83,12 +83,14 @@ Loop:
 		img, err := jpeg.Decode(io, &jpeg.DecoderOptions{})
 		if err != nil {
 			t.Errorf("%s: %v", it.filename, err)
+			continue
 		}
 		if img == nil {
 			t.Error("got nil")
-		} else {
-			util.WritePNG(img, fmt.Sprintf("TestDecode_testdata_%s.png", it.filename[len("testdata/"):]))
+			continue
 		}
+
+		util.WritePNG(img, fmt.Sprintf("TestDecode_testdata_%s.png", it.filename[len("testdata/"):]))
 
 		ref, _, err := image.Decode(util.OpenFile(it.refFilename))
 		if err != nil {

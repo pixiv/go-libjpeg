@@ -91,10 +91,14 @@ func Decode(r io.Reader, options *DecoderOptions) (dest image.Image, err error) 
 		}
 		dest, err = decodeGray(&dinfo)
 	case 3:
-		if dinfo.jpeg_color_space != C.JCS_YCbCr {
+		switch dinfo.jpeg_color_space {
+		case C.JCS_YCbCr:
+			dest, err = decodeYCbCr(&dinfo)
+		case C.JCS_RGB:
+			dest, err = decodeRGB(&dinfo)
+		default:
 			return nil, errors.New("Image has unsupported colorspace")
 		}
-		dest, err = decodeYCbCr(&dinfo)
 	}
 	return
 }
@@ -198,6 +202,16 @@ func decodeYCbCr(dinfo *C.struct_jpeg_decompress_struct) (dest *image.YCbCr, err
 	}
 
 	C.jpeg_finish_decompress(dinfo)
+	return
+}
+
+// TODO: supports decoding into image.RGBA instead of rgb.Image.
+func decodeRGB(dinfo *C.struct_jpeg_decompress_struct) (dest *rgb.Image, err error) {
+	C.jpeg_calc_output_dimensions(dinfo)
+	dest = rgb.NewImage(image.Rect(0, 0, int(dinfo.output_width), int(dinfo.output_height)))
+
+	dinfo.out_color_space = C.JCS_RGB
+	readScanLines(dinfo, dest.Pix, dest.Stride)
 	return
 }
 
