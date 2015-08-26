@@ -9,9 +9,6 @@ import (
 // Image represent image data which has RGB colors.
 // Image is compatible with image.RGBA, but does not have alpha channel to reduce using memory.
 type Image struct {
-	// Imprements image.Image interface.
-	image.Image
-
 	// Pix holds the image's stream, in R, G, B order.
 	Pix []uint8
 	// Stride is the Pix stride (in bytes) between vertically adjacent pixels.
@@ -77,3 +74,7 @@ func (c RGB) RGBA() (r, g, b, a uint32) {
 	a = uint32(0xFFFF)
 	return
 }
+
+// Make sure Image implements image.Image.
+// See https://golang.org/doc/effective_go.html#blank_implements.
+var _ image.Image = new(Image)
