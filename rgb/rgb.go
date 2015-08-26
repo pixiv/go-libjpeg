@@ -75,4 +75,6 @@ func (c RGB) RGBA() (r, g, b, a uint32) {
 	return
 }
 
+// Make sure Image implements image.Image.
+// See https://golang.org/doc/effective_go.html#blank_implements.
 var _ image.Image = new(Image)
