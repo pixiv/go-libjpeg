@@ -58,14 +58,6 @@ var imageTests = []imageTest{
 	{"testdata/video-005.gray.png", "testdata/video-005.gray.jpeg", 8 << 8},
 }
 
-func delta(u0, u1 uint32) int {
-	d := int(u0) - int(u1)
-	if d < 0 {
-		return -d
-	}
-	return d
-}
-
 func withinTolerance(c0, c1 color.Color, tolerance int) bool {
 	r0, g0, b0, a0 := c0.RGBA()
 	r1, g1, b1, a1 := c1.RGBA()

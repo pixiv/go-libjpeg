@@ -25,6 +25,14 @@ var subsampledImageFiles = []string{
 	"checkerboard_420.jpg",
 }
 
+func delta(u0, u1 uint32) int {
+	d := int(u0) - int(u1)
+	if d < 0 {
+		return -d
+	}
+	return d
+}
+
 func BenchmarkDecode(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		for _, file := range naturalImageFiles {
@@ -232,6 +240,51 @@ func TestDecodeAndEncodeSubsampledImages(t *testing.T) {
 
 		if err := jpeg.Encode(w, img, &jpeg.EncoderOptions{Quality: 90}); err != nil {
 			t.Errorf("Encode returns error: %v", err)
+		}
+	}
+}
+
+func TestEncodeGrayImage(t *testing.T) {
+	w, h := 400, 200
+	img := image.NewGray(image.Rect(0, 0, w, h))
+
+	// make gradient
+	for x := 0; x < w; x++ {
+		for y := 0; y < h; y++ {
+			img.SetGray(x, y, color.Gray{uint8(float64(x*y) / float64(w*h) * 255)})
+		}
+	}
+
+	// encode gray gradient
+	f, err := os.Create(util.GetOutFilePath(fmt.Sprintf("TestEncodeGrayImage_%dx%d.jpg", w, h)))
+	if err != nil {
+		panic(err)
+	}
+	wr := bufio.NewWriter(f)
+	defer func() {
+		wr.Flush()
+		f.Close()
+	}()
+	if err := jpeg.Encode(wr, img, &jpeg.EncoderOptions{Quality: 90}); err != nil {
+		t.Errorf("Encode returns error: %v", err)
+	}
+	wr.Flush()
+
+	// rewind to first
+	f.Seek(0, 0)
+
+	// decode file
+	decoded, err := jpeg.Decode(f, &jpeg.DecoderOptions{})
+	if err != nil {
+		t.Errorf("Decode returns error: %v", err)
+	}
+	for x := 0; x < w; x++ {
+		for y := 0; y < h; y++ {
+			r, g, b, _ := decoded.At(x, y).RGBA()
+			ref := uint32(float64(x*y) / float64(w*h) * 255)
+			if delta((r>>8), ref) > 1 || delta((g>>8), ref) > 1 || delta((b>>8), ref) > 1 {
+				t.Errorf("(%d, %d): got (%d, %d, %d) want %v", x, y, r, g, b, ref)
+			}
 		}
 	}
 }
