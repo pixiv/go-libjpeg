@@ -158,6 +158,35 @@ func encodeGray(cinfo *C.struct_jpeg_compress_struct, src *image.Gray, p *Encode
 	C.jpeg_set_defaults(cinfo)
 	setupEncoderOptions(cinfo, p)
 
+	compInfo := (*C.jpeg_component_info)(unsafe.Pointer(cinfo.comp_info))
+	compInfo.h_samp_factor, compInfo.v_samp_factor = 1, 1
+
+	// libjpeg raw data in is in planar format, which avoids unnecessary
+	// planar->packed->planar conversions.
+	cinfo.raw_data_in = C.TRUE
+
+	// Start compression
+	C.jpeg_start_compress(cinfo, C.TRUE)
+
+	// Allocate JSAMPIMAGE to hold pointers to one iMCU worth of image data
+	// this is a safe overestimate; we use the return value from
+	// jpeg_read_raw_data to figure out what is the actual iMCU row count.
+	var rowPtr [AlignSize]C.JSAMPROW
+	arrayPtr := [1]C.JSAMPARRAY{
+		C.JSAMPARRAY(unsafe.Pointer(&rowPtr[0])),
+	}
+
+	var rows C.JDIMENSION
+	for rows = 0; rows < cinfo.image_height; {
+		// First fill in the pointers into the plane data buffers
+		for j := 0; j < int(C.DCTSIZE*compInfo.v_samp_factor); j++ {
+			rowPtr[j] = C.JSAMPROW(unsafe.Pointer(&src.Pix[src.Stride*(int(rows)+j)]))
+		}
+		// Get the data
+		rows += C.jpeg_write_raw_data(cinfo, C.JSAMPIMAGE(unsafe.Pointer(&arrayPtr[0])), C.JDIMENSION(C.DCTSIZE*compInfo.v_samp_factor))
+	}
+
+	C.jpeg_finish_compress(cinfo)
 	return
 }
 
