@@ -79,18 +79,18 @@ func destinationTerm(cinfo *C.struct_jpeg_compress_struct) {
 	flushBuffer(mgr, inBuffer)
 }
 
-func makeDestinationManager(dest io.Writer, cinfo *C.struct_jpeg_compress_struct) (ret *destinationManager) {
-	ret = (*destinationManager)(C.malloc(C.size_t(unsafe.Sizeof(destinationManager{}))))
-	if ret == nil {
+func makeDestinationManager(dest io.Writer, cinfo *C.struct_jpeg_compress_struct) (mgr *destinationManager) {
+	mgr = (*destinationManager)(C.malloc(C.size_t(unsafe.Sizeof(destinationManager{}))))
+	if mgr == nil {
 		panic("Failed to allocate destinationManager")
 	}
-	ret.magic = magic
-	ret.dest = dest
-	ret.pub.init_destination = (*[0]byte)(C.destinationInit)
-	ret.pub.empty_output_buffer = (*[0]byte)(C.destinationEmpty)
-	ret.pub.term_destination = (*[0]byte)(C.destinationTerm)
-	ret.pub.free_in_buffer = writeBufferSize
-	ret.pub.next_output_byte = (*C.JOCTET)(&ret.buffer[0])
-	cinfo.dest = &ret.pub
+	mgr.magic = magic
+	mgr.dest = dest
+	mgr.pub.init_destination = (*[0]byte)(C.destinationInit)
+	mgr.pub.empty_output_buffer = (*[0]byte)(C.destinationEmpty)
+	mgr.pub.term_destination = (*[0]byte)(C.destinationTerm)
+	mgr.pub.free_in_buffer = writeBufferSize
+	mgr.pub.next_output_byte = (*C.JOCTET)(&mgr.buffer[0])
+	cinfo.dest = &mgr.pub
 	return
 }
