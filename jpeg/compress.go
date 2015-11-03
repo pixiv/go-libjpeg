@@ -65,7 +65,8 @@ func Encode(w io.Writer, src image.Image, opt *EncoderOptions) (err error) {
 
 	var cinfo *C.struct_jpeg_compress_struct = C.new_compress()
 	defer C.destroy_compress(cinfo)
-	makeDestinationManager(w, cinfo)
+	dstManager := makeDestinationManager(w, cinfo)
+	defer C.free(unsafe.Pointer(dstManager))
 
 	switch s := src.(type) {
 	case *image.YCbCr:

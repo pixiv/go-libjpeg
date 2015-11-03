@@ -86,7 +86,8 @@ func Decode(r io.Reader, options *DecoderOptions) (dest image.Image, err error) 
 	var dinfo *C.struct_jpeg_decompress_struct = C.new_decompress()
 	defer C.destroy_decompress(dinfo)
 
-	makeSourceManager(r, dinfo)
+	srcManager := makeSourceManager(r, dinfo)
+	defer C.free(unsafe.Pointer(srcManager))
 	C.jpeg_read_header(dinfo, C.TRUE)
 
 	setupDecoderOptions(dinfo, options)
@@ -237,7 +238,8 @@ func DecodeIntoRGB(r io.Reader, options *DecoderOptions) (dest *rgb.Image, err e
 	var dinfo *C.struct_jpeg_decompress_struct = C.new_decompress()
 	defer C.destroy_decompress(dinfo)
 
-	makeSourceManager(r, dinfo)
+	srcManager := makeSourceManager(r, dinfo)
+	defer C.free(unsafe.Pointer(srcManager))
 	C.jpeg_read_header(dinfo, C.TRUE)
 	setupDecoderOptions(dinfo, options)
 
@@ -265,7 +267,8 @@ func DecodeIntoRGBA(r io.Reader, options *DecoderOptions) (dest *image.RGBA, err
 	var dinfo *C.struct_jpeg_decompress_struct = C.new_decompress()
 	defer C.destroy_decompress(dinfo)
 
-	makeSourceManager(r, dinfo)
+	srcManager := makeSourceManager(r, dinfo)
+	defer C.free(unsafe.Pointer(srcManager))
 	C.jpeg_read_header(dinfo, C.TRUE)
 	setupDecoderOptions(dinfo, options)
 
@@ -310,7 +313,8 @@ func DecodeConfig(r io.Reader) (config image.Config, err error) {
 	var dinfo *C.struct_jpeg_decompress_struct = C.new_decompress()
 	defer C.destroy_decompress(dinfo)
 
-	makeSourceManager(r, dinfo)
+	srcManager := makeSourceManager(r, dinfo)
+	defer C.free(unsafe.Pointer(srcManager))
 	C.jpeg_read_header(dinfo, C.TRUE)
 
 	config = image.Config{

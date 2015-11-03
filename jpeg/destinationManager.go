@@ -79,7 +79,11 @@ func destinationTerm(cinfo *C.struct_jpeg_compress_struct) {
 	flushBuffer(mgr, inBuffer)
 }
 
-func makeDestinationManager(dest io.Writer, cinfo *C.struct_jpeg_compress_struct) (ret destinationManager) {
+func makeDestinationManager(dest io.Writer, cinfo *C.struct_jpeg_compress_struct) (ret *destinationManager) {
+	ret = (*destinationManager)(C.malloc(C.size_t(unsafe.Sizeof(destinationManager{}))))
+	if ret == nil {
+		panic("Failed to allocate destinationManager")
+	}
 	ret.magic = magic
 	ret.dest = dest
 	ret.pub.init_destination = (*[0]byte)(C.destinationInit)
