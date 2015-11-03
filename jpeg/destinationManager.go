@@ -94,3 +94,7 @@ func makeDestinationManager(dest io.Writer, cinfo *C.struct_jpeg_compress_struct
 	cinfo.dest = &mgr.pub
 	return
 }
+
+func releaseDestinationManager(mgr *destinationManager) {
+	C.free(unsafe.Pointer(mgr))
+}

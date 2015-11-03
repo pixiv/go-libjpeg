@@ -59,7 +59,7 @@ func Encode(w io.Writer, src image.Image, opt *EncoderOptions) (err error) {
 	defer C.destroy_compress(cinfo)
 
 	dstManager := makeDestinationManager(w, cinfo)
-	defer C.free(unsafe.Pointer(dstManager))
+	defer releaseDestinationManager(dstManager)
 
 	switch s := src.(type) {
 	case *image.YCbCr:

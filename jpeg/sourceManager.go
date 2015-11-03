@@ -122,3 +122,7 @@ func makeSourceManager(src io.Reader, dinfo *C.struct_jpeg_decompress_struct) (m
 	dinfo.src = &mgr.pub
 	return
 }
+
+func releaseSourceManager(mgr *sourceManager) {
+	C.free(unsafe.Pointer(mgr))
+}

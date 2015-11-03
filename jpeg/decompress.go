@@ -87,7 +87,7 @@ func Decode(r io.Reader, options *DecoderOptions) (dest image.Image, err error) 
 	defer C.destroy_decompress(dinfo)
 
 	srcManager := makeSourceManager(r, dinfo)
-	defer C.free(unsafe.Pointer(srcManager))
+	defer releaseSourceManager(srcManager)
 
 	C.jpeg_read_header(dinfo, C.TRUE)
 	setupDecoderOptions(dinfo, options)
@@ -239,7 +239,7 @@ func DecodeIntoRGB(r io.Reader, options *DecoderOptions) (dest *rgb.Image, err e
 	defer C.destroy_decompress(dinfo)
 
 	srcManager := makeSourceManager(r, dinfo)
-	defer C.free(unsafe.Pointer(srcManager))
+	defer releaseSourceManager(srcManager)
 
 	C.jpeg_read_header(dinfo, C.TRUE)
 	setupDecoderOptions(dinfo, options)
@@ -269,7 +269,7 @@ func DecodeIntoRGBA(r io.Reader, options *DecoderOptions) (dest *image.RGBA, err
 	defer C.destroy_decompress(dinfo)
 
 	srcManager := makeSourceManager(r, dinfo)
-	defer C.free(unsafe.Pointer(srcManager))
+	defer releaseSourceManager(srcManager)
 
 	C.jpeg_read_header(dinfo, C.TRUE)
 	setupDecoderOptions(dinfo, options)
@@ -316,7 +316,7 @@ func DecodeConfig(r io.Reader) (config image.Config, err error) {
 	defer C.destroy_decompress(dinfo)
 
 	srcManager := makeSourceManager(r, dinfo)
-	defer C.free(unsafe.Pointer(srcManager))
+	defer releaseSourceManager(srcManager)
 
 	C.jpeg_read_header(dinfo, C.TRUE)
 
