@@ -88,8 +88,8 @@ func Decode(r io.Reader, options *DecoderOptions) (dest image.Image, err error) 
 
 	srcManager := makeSourceManager(r, dinfo)
 	defer C.free(unsafe.Pointer(srcManager))
-	C.jpeg_read_header(dinfo, C.TRUE)
 
+	C.jpeg_read_header(dinfo, C.TRUE)
 	setupDecoderOptions(dinfo, options)
 
 	switch dinfo.num_components {
@@ -240,6 +240,7 @@ func DecodeIntoRGB(r io.Reader, options *DecoderOptions) (dest *rgb.Image, err e
 
 	srcManager := makeSourceManager(r, dinfo)
 	defer C.free(unsafe.Pointer(srcManager))
+
 	C.jpeg_read_header(dinfo, C.TRUE)
 	setupDecoderOptions(dinfo, options)
 
@@ -269,6 +270,7 @@ func DecodeIntoRGBA(r io.Reader, options *DecoderOptions) (dest *image.RGBA, err
 
 	srcManager := makeSourceManager(r, dinfo)
 	defer C.free(unsafe.Pointer(srcManager))
+
 	C.jpeg_read_header(dinfo, C.TRUE)
 	setupDecoderOptions(dinfo, options)
 
@@ -315,6 +317,7 @@ func DecodeConfig(r io.Reader) (config image.Config, err error) {
 
 	srcManager := makeSourceManager(r, dinfo)
 	defer C.free(unsafe.Pointer(srcManager))
+
 	C.jpeg_read_header(dinfo, C.TRUE)
 
 	config = image.Config{
