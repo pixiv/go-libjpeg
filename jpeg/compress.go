@@ -5,20 +5,30 @@ package jpeg
 #include <stdlib.h>
 #include "jpeglib.h"
 
-void error_panic(j_common_ptr dinfo);
+void error_panic(j_common_ptr cinfo);
 
-static void initialize_compress(j_compress_ptr dinfo, struct jpeg_error_mgr *jerr) {
+static struct jpeg_compress_struct *new_compress() {
+	struct jpeg_compress_struct *cinfo = (struct jpeg_compress_struct *) malloc(sizeof(struct jpeg_compress_struct));
+	struct jpeg_error_mgr *jerr = (struct jpeg_error_mgr *)malloc(sizeof(struct jpeg_error_mgr));
+
   jpeg_std_error(jerr);
   jerr->error_exit = (void *)error_panic;
-	jpeg_create_compress(dinfo);
-  dinfo->err = jerr;
+	jpeg_create_compress(cinfo);
+  cinfo->err = jerr;
+
+	return cinfo;
 }
 
-static int DCT_v_scaled_size(j_decompress_ptr dinfo, int component) {
+static void destroy_compress(struct jpeg_compress_struct *cinfo) {
+	free(cinfo->err);
+	jpeg_destroy_compress(cinfo);
+}
+
+static int DCT_v_scaled_size(j_decompress_ptr cinfo, int component) {
 #if JPEG_LIB_VERSION >= 70
-	return dinfo->comp_info[component].DCT_v_scaled_size;
+	return cinfo->comp_info[component].DCT_v_scaled_size;
 #else
-	return dinfo->comp_info[component].DCT_scaled_size;
+	return cinfo->comp_info[component].DCT_scaled_size;
 #endif
 }
 
@@ -53,18 +63,15 @@ func Encode(w io.Writer, src image.Image, opt *EncoderOptions) (err error) {
 		}
 	}()
 
-	var cinfo C.struct_jpeg_compress_struct
-	var jerr C.struct_jpeg_error_mgr
-
-	C.initialize_compress(&cinfo, &jerr)
-	defer C.jpeg_destroy_compress(&cinfo)
-	makeDestinationManager(w, &cinfo)
+	var cinfo *C.struct_jpeg_compress_struct = C.new_compress()
+	defer C.destroy_compress(cinfo)
+	makeDestinationManager(w, cinfo)
 
 	switch s := src.(type) {
 	case *image.YCbCr:
-		err = encodeYCbCr(&cinfo, s, opt)
+		err = encodeYCbCr(cinfo, s, opt)
 	case *image.Gray:
-		err = encodeGray(&cinfo, s, opt)
+		err = encodeGray(cinfo, s, opt)
 	default:
 		return errors.New("unsupported image type")
 	}
