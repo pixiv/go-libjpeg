@@ -24,14 +24,6 @@ static void destroy_compress(struct jpeg_compress_struct *cinfo) {
 	jpeg_destroy_compress(cinfo);
 }
 
-static int DCT_v_scaled_size(j_decompress_ptr cinfo, int component) {
-#if JPEG_LIB_VERSION >= 70
-	return cinfo->comp_info[component].DCT_v_scaled_size;
-#else
-	return cinfo->comp_info[component].DCT_scaled_size;
-#endif
-}
-
 */
 import "C"
 
