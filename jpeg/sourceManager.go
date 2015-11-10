@@ -90,6 +90,7 @@ func sourceFill(dinfo *C.struct_jpeg_decompress_struct) C.boolean {
 	if err == io.EOF {
 		if bytes == 0 {
 			if mgr.startOfFile {
+				releaseSourceManager(mgr)
 				panic("input is empty")
 			}
 			// EOF and need more data. Fill in a fake EOI to get a partial image.
@@ -98,6 +99,7 @@ func sourceFill(dinfo *C.struct_jpeg_decompress_struct) C.boolean {
 			mgr.pub.bytes_in_buffer = 2
 		}
 	} else if err != nil {
+		releaseSourceManager(mgr)
 		panic(err)
 	}
 	mgr.startOfFile = false

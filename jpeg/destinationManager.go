@@ -55,6 +55,7 @@ func flushBuffer(mgr *destinationManager, inBuffer int) {
 	for wrote != inBuffer {
 		bytes, err := mgr.dest.Write(mgr.buffer[wrote:inBuffer])
 		if err != nil {
+			releaseDestinationManager(mgr)
 			panic(err)
 		}
 		wrote += int(bytes)
