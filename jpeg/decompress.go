@@ -7,11 +7,21 @@ package jpeg
 
 void error_panic(j_common_ptr dinfo);
 
-static void initialize_decompress(j_decompress_ptr dinfo, struct jpeg_error_mgr *jerr) {
+static struct jpeg_decompress_struct *new_decompress() {
+	struct jpeg_decompress_struct *dinfo = (struct jpeg_decompress_struct *)malloc(sizeof(struct jpeg_decompress_struct));
+	struct jpeg_error_mgr *jerr = (struct jpeg_error_mgr *)malloc(sizeof(struct jpeg_error_mgr));
+
   jpeg_std_error(jerr);
   jerr->error_exit = (void *)error_panic;
 	jpeg_create_decompress(dinfo);
   dinfo->err = jerr;
+
+	return dinfo;
+}
+
+static void destroy_decompress(struct jpeg_decompress_struct *dinfo) {
+	free(dinfo->err);
+	jpeg_destroy_decompress(dinfo);
 }
 
 static int DCT_v_scaled_size(j_decompress_ptr dinfo, int component) {
@@ -73,29 +83,27 @@ func Decode(r io.Reader, options *DecoderOptions) (dest image.Image, err error) 
 		}
 	}()
 
-	var dinfo C.struct_jpeg_decompress_struct
-	var jerr C.struct_jpeg_error_mgr
+	var dinfo *C.struct_jpeg_decompress_struct = C.new_decompress()
+	defer C.destroy_decompress(dinfo)
 
-	C.initialize_decompress(&dinfo, &jerr)
-	defer C.jpeg_destroy_decompress(&dinfo)
+	srcManager := makeSourceManager(r, dinfo)
+	defer releaseSourceManager(srcManager)
 
-	makeSourceManager(r, &dinfo)
-	C.jpeg_read_header(&dinfo, C.TRUE)
-
-	setupDecoderOptions(&dinfo, options)
+	C.jpeg_read_header(dinfo, C.TRUE)
+	setupDecoderOptions(dinfo, options)
 
 	switch dinfo.num_components {
 	case 1:
 		if dinfo.jpeg_color_space != C.JCS_GRAYSCALE {
 			return nil, errors.New("Image has unsupported colorspace")
 		}
-		dest, err = decodeGray(&dinfo)
+		dest, err = decodeGray(dinfo)
 	case 3:
 		switch dinfo.jpeg_color_space {
 		case C.JCS_YCbCr:
-			dest, err = decodeYCbCr(&dinfo)
+			dest, err = decodeYCbCr(dinfo)
 		case C.JCS_RGB:
-			dest, err = decodeRGB(&dinfo)
+			dest, err = decodeRGB(dinfo)
 		default:
 			return nil, errors.New("Image has unsupported colorspace")
 		}
@@ -227,21 +235,20 @@ func DecodeIntoRGB(r io.Reader, options *DecoderOptions) (dest *rgb.Image, err e
 		}
 	}()
 
-	var dinfo C.struct_jpeg_decompress_struct
-	var jerr C.struct_jpeg_error_mgr
+	var dinfo *C.struct_jpeg_decompress_struct = C.new_decompress()
+	defer C.destroy_decompress(dinfo)
 
-	C.initialize_decompress(&dinfo, &jerr)
-	defer C.jpeg_destroy_decompress(&dinfo)
+	srcManager := makeSourceManager(r, dinfo)
+	defer releaseSourceManager(srcManager)
 
-	makeSourceManager(r, &dinfo)
-	C.jpeg_read_header(&dinfo, C.TRUE)
-	setupDecoderOptions(&dinfo, options)
+	C.jpeg_read_header(dinfo, C.TRUE)
+	setupDecoderOptions(dinfo, options)
 
-	C.jpeg_calc_output_dimensions(&dinfo)
+	C.jpeg_calc_output_dimensions(dinfo)
 	dest = rgb.NewImage(image.Rect(0, 0, int(dinfo.output_width), int(dinfo.output_height)))
 
 	dinfo.out_color_space = C.JCS_RGB
-	readScanLines(&dinfo, dest.Pix, dest.Stride)
+	readScanLines(dinfo, dest.Pix, dest.Stride)
 	return
 }
 
@@ -258,17 +265,16 @@ func DecodeIntoRGBA(r io.Reader, options *DecoderOptions) (dest *image.RGBA, err
 		}
 	}()
 
-	var dinfo C.struct_jpeg_decompress_struct
-	var jerr C.struct_jpeg_error_mgr
+	var dinfo *C.struct_jpeg_decompress_struct = C.new_decompress()
+	defer C.destroy_decompress(dinfo)
 
-	C.initialize_decompress(&dinfo, &jerr)
-	defer C.jpeg_destroy_decompress(&dinfo)
+	srcManager := makeSourceManager(r, dinfo)
+	defer releaseSourceManager(srcManager)
 
-	makeSourceManager(r, &dinfo)
-	C.jpeg_read_header(&dinfo, C.TRUE)
-	setupDecoderOptions(&dinfo, options)
+	C.jpeg_read_header(dinfo, C.TRUE)
+	setupDecoderOptions(dinfo, options)
 
-	C.jpeg_calc_output_dimensions(&dinfo)
+	C.jpeg_calc_output_dimensions(dinfo)
 	dest = image.NewRGBA(image.Rect(0, 0, int(dinfo.output_width), int(dinfo.output_height)))
 
 	colorSpace := C.getJCS_EXT_RGBA()
@@ -277,7 +283,7 @@ func DecodeIntoRGBA(r io.Reader, options *DecoderOptions) (dest *image.RGBA, err
 	}
 
 	dinfo.out_color_space = colorSpace
-	readScanLines(&dinfo, dest.Pix, dest.Stride)
+	readScanLines(dinfo, dest.Pix, dest.Stride)
 	return
 }
 
@@ -306,13 +312,13 @@ func DecodeConfig(r io.Reader) (config image.Config, err error) {
 		}
 	}()
 
-	var dinfo C.struct_jpeg_decompress_struct
-	var jerr C.struct_jpeg_error_mgr
+	var dinfo *C.struct_jpeg_decompress_struct = C.new_decompress()
+	defer C.destroy_decompress(dinfo)
 
-	C.initialize_decompress(&dinfo, &jerr)
-	defer C.jpeg_destroy_decompress(&dinfo)
-	makeSourceManager(r, &dinfo)
-	C.jpeg_read_header(&dinfo, C.TRUE)
+	srcManager := makeSourceManager(r, dinfo)
+	defer releaseSourceManager(srcManager)
+
+	C.jpeg_read_header(dinfo, C.TRUE)
 
 	config = image.Config{
 		ColorModel: color.YCbCrModel,

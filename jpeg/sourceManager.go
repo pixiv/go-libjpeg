@@ -90,6 +90,7 @@ func sourceFill(dinfo *C.struct_jpeg_decompress_struct) C.boolean {
 	if err == io.EOF {
 		if bytes == 0 {
 			if mgr.startOfFile {
+				releaseSourceManager(mgr)
 				panic("input is empty")
 			}
 			// EOF and need more data. Fill in a fake EOI to get a partial image.
@@ -98,6 +99,7 @@ func sourceFill(dinfo *C.struct_jpeg_decompress_struct) C.boolean {
 			mgr.pub.bytes_in_buffer = 2
 		}
 	} else if err != nil {
+		releaseSourceManager(mgr)
 		panic(err)
 	}
 	mgr.startOfFile = false
@@ -105,7 +107,11 @@ func sourceFill(dinfo *C.struct_jpeg_decompress_struct) C.boolean {
 	return C.TRUE
 }
 
-func makeSourceManager(src io.Reader, dinfo *C.struct_jpeg_decompress_struct) (mgr sourceManager) {
+func makeSourceManager(src io.Reader, dinfo *C.struct_jpeg_decompress_struct) (mgr *sourceManager) {
+	mgr = (*sourceManager)(C.malloc(C.size_t(unsafe.Sizeof(sourceManager{}))))
+	if mgr == nil {
+		panic("Failed to allocate sourceManager")
+	}
 	mgr.magic = magic
 	mgr.src = src
 	mgr.pub.init_source = (*[0]byte)(C.sourceInit)
@@ -117,4 +123,8 @@ func makeSourceManager(src io.Reader, dinfo *C.struct_jpeg_decompress_struct) (m
 	mgr.pub.next_input_byte = nil
 	dinfo.src = &mgr.pub
 	return
+}
+
+func releaseSourceManager(mgr *sourceManager) {
+	C.free(unsafe.Pointer(mgr))
 }
