@@ -4,6 +4,7 @@ package jpeg
 #include <stdio.h>
 #include <stdlib.h>
 #include "jpeglib.h"
+#include "jpeg.h"
 
 void error_panic(j_common_ptr cinfo);
 
@@ -22,6 +23,49 @@ static struct jpeg_compress_struct *new_compress() {
 static void destroy_compress(struct jpeg_compress_struct *cinfo) {
 	free(cinfo->err);
 	jpeg_destroy_compress(cinfo);
+}
+
+static void encode_gray(j_compress_ptr cinfo, JSAMPROW pix, int stride) {
+	// Allocate JSAMPIMAGE to hold pointers to one iMCU worth of image data
+	// this is a safe overestimate; we use the return value from
+	// jpeg_read_raw_data to figure out what is the actual iMCU row count.
+	JSAMPROW *rows = alloca(sizeof(JSAMPROW) * ALIGN_SIZE);
+
+	int v = 0;
+	for (v = 0; v < cinfo->image_height; ) {
+		// First fill in the pointers into the plane data buffers
+		int h = 0;
+		for (h = 0; h < DCTSIZE * cinfo->comp_info[0].v_samp_factor; h++) {
+			rows[h] = &pix[stride * (v + h)];
+		}
+		// Get the data
+		v += jpeg_write_raw_data(cinfo, &rows, DCTSIZE * cinfo->comp_info[0].v_samp_factor);
+	}
+}
+
+static void encode_ycbcr(j_compress_ptr cinfo, JSAMPROW y_row, JSAMPROW cb_row, JSAMPROW cr_row, int y_stride, int c_stride, int color_v_div) {
+	// Allocate JSAMPIMAGE to hold pointers to one iMCU worth of image data
+	// this is a safe overestimate; we use the return value from
+	// jpeg_read_raw_data to figure out what is the actual iMCU row count.
+	JSAMPROW *y_rows = alloca(sizeof(JSAMPROW) * ALIGN_SIZE);
+	JSAMPROW *cb_rows = alloca(sizeof(JSAMPROW) * ALIGN_SIZE);
+	JSAMPROW *cr_rows = alloca(sizeof(JSAMPROW) * ALIGN_SIZE);
+	JSAMPARRAY image[] = { y_rows, cb_rows, cr_rows };
+
+	int v = 0;
+	for (v = 0; v < cinfo->image_height; ) {
+		int h = 0;
+		// First fill in the pointers into the plane data buffers
+		for (h = 0; h <  DCTSIZE * cinfo->comp_info[0].v_samp_factor; h++) {
+			y_rows[h] = &y_row[y_stride * (v + h)];
+		}
+		for (h = 0; h <  DCTSIZE * cinfo->comp_info[1].v_samp_factor; h++) {
+			cb_rows[h] = &cb_row[c_stride * (v / color_v_div + h)];
+			cr_rows[h] = &cr_row[c_stride * (v / color_v_div + h)];
+		}
+		// Get the data
+		v += jpeg_write_raw_data(cinfo, image, DCTSIZE * cinfo->comp_info[0].v_samp_factor);
+	}
 }
 
 */
@@ -117,33 +161,15 @@ func encodeYCbCr(cinfo *C.struct_jpeg_compress_struct, src *image.YCbCr, p *Enco
 
 	// Start compression
 	C.jpeg_start_compress(cinfo, C.TRUE)
-
-	// Allocate JSAMPIMAGE to hold pointers to one iMCU worth of image data
-	// this is a safe overestimate; we use the return value from
-	// jpeg_read_raw_data to figure out what is the actual iMCU row count.
-	var yRowPtr [AlignSize]C.JSAMPROW
-	var cbRowPtr [AlignSize]C.JSAMPROW
-	var crRowPtr [AlignSize]C.JSAMPROW
-	yCbCrPtr := [3]C.JSAMPARRAY{
-		C.JSAMPARRAY(unsafe.Pointer(&yRowPtr[0])),
-		C.JSAMPARRAY(unsafe.Pointer(&cbRowPtr[0])),
-		C.JSAMPARRAY(unsafe.Pointer(&crRowPtr[0])),
-	}
-
-	var rows C.JDIMENSION
-	for rows = 0; rows < cinfo.image_height; {
-		// First fill in the pointers into the plane data buffers
-		for j := 0; j < int(C.DCTSIZE*compInfo[Y].v_samp_factor); j++ {
-			yRowPtr[j] = C.JSAMPROW(unsafe.Pointer(&src.Y[src.YStride*(int(rows)+j)]))
-		}
-		for j := 0; j < int(C.DCTSIZE*compInfo[Cb].v_samp_factor); j++ {
-			cbRowPtr[j] = C.JSAMPROW(unsafe.Pointer(&src.Cb[src.CStride*(int(rows)/colorVDiv+j)]))
-			crRowPtr[j] = C.JSAMPROW(unsafe.Pointer(&src.Cr[src.CStride*(int(rows)/colorVDiv+j)]))
-		}
-		// Get the data
-		rows += C.jpeg_write_raw_data(cinfo, C.JSAMPIMAGE(unsafe.Pointer(&yCbCrPtr[0])), C.JDIMENSION(C.DCTSIZE*compInfo[0].v_samp_factor))
-	}
-
+	C.encode_ycbcr(
+		cinfo,
+		C.JSAMPROW(unsafe.Pointer(&src.Y[0])),
+		C.JSAMPROW(unsafe.Pointer(&src.Cb[0])),
+		C.JSAMPROW(unsafe.Pointer(&src.Cr[0])),
+		C.int(src.YStride),
+		C.int(src.CStride),
+		C.int(colorVDiv),
+	)
 	C.jpeg_finish_compress(cinfo)
 	return
 }
@@ -168,25 +194,7 @@ func encodeGray(cinfo *C.struct_jpeg_compress_struct, src *image.Gray, p *Encode
 
 	// Start compression
 	C.jpeg_start_compress(cinfo, C.TRUE)
-
-	// Allocate JSAMPIMAGE to hold pointers to one iMCU worth of image data
-	// this is a safe overestimate; we use the return value from
-	// jpeg_read_raw_data to figure out what is the actual iMCU row count.
-	var rowPtr [AlignSize]C.JSAMPROW
-	arrayPtr := [1]C.JSAMPARRAY{
-		C.JSAMPARRAY(unsafe.Pointer(&rowPtr[0])),
-	}
-
-	var rows C.JDIMENSION
-	for rows = 0; rows < cinfo.image_height; {
-		// First fill in the pointers into the plane data buffers
-		for j := 0; j < int(C.DCTSIZE*compInfo.v_samp_factor); j++ {
-			rowPtr[j] = C.JSAMPROW(unsafe.Pointer(&src.Pix[src.Stride*(int(rows)+j)]))
-		}
-		// Get the data
-		rows += C.jpeg_write_raw_data(cinfo, C.JSAMPIMAGE(unsafe.Pointer(&arrayPtr[0])), C.JDIMENSION(C.DCTSIZE*compInfo.v_samp_factor))
-	}
-
+	C.encode_gray(cinfo, C.JSAMPROW(unsafe.Pointer(&src.Pix[0])), C.int(src.Stride))
 	C.jpeg_finish_compress(cinfo)
 	return
 }

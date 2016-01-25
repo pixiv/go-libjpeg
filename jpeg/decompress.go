@@ -4,6 +4,7 @@ package jpeg
 #include <stdio.h>
 #include <stdlib.h>
 #include "jpeglib.h"
+#include "jpeg.h"
 
 void error_panic(j_common_ptr dinfo);
 
@@ -24,6 +25,10 @@ static void destroy_decompress(struct jpeg_decompress_struct *dinfo) {
 	jpeg_destroy_decompress(dinfo);
 }
 
+static JDIMENSION jpeg_read_scanline(j_decompress_ptr dinfo, JSAMPROW row, JDIMENSION max_lines) {
+  return jpeg_read_scanlines(dinfo, &row, max_lines);
+}
+
 static int DCT_v_scaled_size(j_decompress_ptr dinfo, int component) {
 #if JPEG_LIB_VERSION >= 70
 	return dinfo->comp_info[component].DCT_v_scaled_size;
@@ -37,6 +42,43 @@ static J_COLOR_SPACE getJCS_EXT_RGBA() {
 	return JCS_EXT_RGBA;
 #endif
   return JCS_UNKNOWN;
+}
+
+static void decode_gray(j_decompress_ptr dinfo, JSAMPROW pix, int stride, int imcu_rows) {
+	jpeg_component_info comp_info = dinfo->comp_info[0];
+	JSAMPROW *rows = alloca(sizeof(JSAMPROW) * ALIGN_SIZE);
+	while (dinfo->output_scanline < dinfo->output_height) {
+		int h = 0;
+		for (h = 0; h < imcu_rows; h++) {
+			rows[h] = &pix[stride*(dinfo->output_scanline + h)];
+		}
+		// Get the data
+		jpeg_read_raw_data(dinfo, &rows, 2 * imcu_rows);
+	}
+}
+
+static void decode_ycbcr(j_decompress_ptr dinfo, JSAMPROW y_row, JSAMPROW cb_row, JSAMPROW cr_row, int y_stride, int c_stride, int color_v_div, int imcu_rows) {
+	jpeg_component_info comp_info = dinfo->comp_info[0];
+
+	// Allocate JSAMPIMAGE to hold pointers to one iMCU worth of image data
+	// this is a safe overestimate; we use the return value from
+	// jpeg_read_raw_data to figure out what is the actual iMCU row count.
+	JSAMPROW *y_rows = alloca(sizeof(JSAMPROW) * ALIGN_SIZE);
+	JSAMPROW *cb_rows = alloca(sizeof(JSAMPROW) * ALIGN_SIZE);
+	JSAMPROW *cr_rows = alloca(sizeof(JSAMPROW) * ALIGN_SIZE);
+	JSAMPARRAY image[] = { y_rows, cb_rows, cr_rows };
+
+	while (dinfo->output_scanline < dinfo->output_height) {
+		// First fill in the pointers into the plane data buffers
+		int h = 0;
+		for (h = 0; h < imcu_rows; h++) {
+			y_rows[h] = &y_row[y_stride*(dinfo->output_scanline+h)];
+			cb_rows[h] = &cb_row[c_stride*(dinfo->output_scanline/color_v_div+h)];
+			cr_rows[h] = &cr_row[c_stride*(dinfo->output_scanline/color_v_div+h)];
+		}
+		// Get the data
+		jpeg_read_raw_data(dinfo, image, 2 * imcu_rows);
+	}
 }
 
 */
@@ -120,21 +162,11 @@ func decodeGray(dinfo *C.struct_jpeg_decompress_struct) (dest *image.Gray, err e
 	compInfo := (*[1]C.jpeg_component_info)(unsafe.Pointer(dinfo.comp_info))
 	dest = NewGrayAligned(image.Rect(0, 0, int(compInfo[0].downsampled_width), int(compInfo[0].downsampled_height)))
 
-	var rowPtr [AlignSize]C.JSAMPROW
-	arrayPtr := [1]C.JSAMPARRAY{
-		C.JSAMPARRAY(unsafe.Pointer(&rowPtr[0])),
-	}
-
 	iMCURows := int(C.DCT_v_scaled_size(dinfo, C.int(0)) * compInfo[0].v_samp_factor)
 
-	for dinfo.output_scanline < dinfo.output_height {
-		for j := 0; j < iMCURows; j++ {
-			rowPtr[j] = C.JSAMPROW(unsafe.Pointer(&dest.Pix[dest.Stride*(int(dinfo.output_scanline)+j)]))
-		}
-		// Get the data
-		C.jpeg_read_raw_data(dinfo, C.JSAMPIMAGE(unsafe.Pointer(&arrayPtr[0])), C.JDIMENSION(2*iMCURows))
-	}
+	C.decode_gray(dinfo, C.JSAMPROW(unsafe.Pointer(&dest.Pix[0])), C.int(dest.Stride), C.int(iMCURows))
 
+	C.jpeg_finish_decompress(dinfo)
 	return
 }
 
@@ -178,18 +210,6 @@ func decodeYCbCr(dinfo *C.struct_jpeg_decompress_struct) (dest *image.YCbCr, err
 	// Allocate distination iamge
 	dest = NewYCbCrAligned(image.Rect(0, 0, int(dinfo.output_width), int(dinfo.output_height)), subsampleRatio)
 
-	// Allocate JSAMPIMAGE to hold pointers to one iMCU worth of image data
-	// this is a safe overestimate; we use the return value from
-	// jpeg_read_raw_data to figure out what is the actual iMCU row count.
-	var yRowPtr [AlignSize]C.JSAMPROW
-	var cbRowPtr [AlignSize]C.JSAMPROW
-	var crRowPtr [AlignSize]C.JSAMPROW
-	yCbCrPtr := [3]C.JSAMPARRAY{
-		C.JSAMPARRAY(unsafe.Pointer(&yRowPtr[0])),
-		C.JSAMPARRAY(unsafe.Pointer(&cbRowPtr[0])),
-		C.JSAMPARRAY(unsafe.Pointer(&crRowPtr[0])),
-	}
-
 	var iMCURows int
 	for i := 0; i < int(dinfo.num_components); i++ {
 		compRows := int(C.DCT_v_scaled_size(dinfo, C.int(i)) * compInfo[i].v_samp_factor)
@@ -198,16 +218,16 @@ func decodeYCbCr(dinfo *C.struct_jpeg_decompress_struct) (dest *image.YCbCr, err
 		}
 	}
 	//fmt.Printf("iMCU_rows: %d (div: %d)\n", iMCURows, colorVDiv)
-	for dinfo.output_scanline < dinfo.output_height {
-		// First fill in the pointers into the plane data buffers
-		for j := 0; j < iMCURows; j++ {
-			yRowPtr[j] = C.JSAMPROW(unsafe.Pointer(&dest.Y[dest.YStride*(int(dinfo.output_scanline)+j)]))
-			cbRowPtr[j] = C.JSAMPROW(unsafe.Pointer(&dest.Cb[dest.CStride*(int(dinfo.output_scanline)/colorVDiv+j)]))
-			crRowPtr[j] = C.JSAMPROW(unsafe.Pointer(&dest.Cr[dest.CStride*(int(dinfo.output_scanline)/colorVDiv+j)]))
-		}
-		// Get the data
-		C.jpeg_read_raw_data(dinfo, C.JSAMPIMAGE(unsafe.Pointer(&yCbCrPtr[0])), C.JDIMENSION(2*iMCURows))
-	}
+
+	C.decode_ycbcr(dinfo,
+		C.JSAMPROW(unsafe.Pointer(&dest.Y[0])),
+		C.JSAMPROW(unsafe.Pointer(&dest.Cb[0])),
+		C.JSAMPROW(unsafe.Pointer(&dest.Cr[0])),
+		C.int(dest.YStride),
+		C.int(dest.CStride),
+		C.int(colorVDiv),
+		C.int(iMCURows),
+	)
 
 	C.jpeg_finish_decompress(dinfo)
 	return
@@ -288,13 +308,10 @@ func DecodeIntoRGBA(r io.Reader, options *DecoderOptions) (dest *image.RGBA, err
 }
 
 func readScanLines(dinfo *C.struct_jpeg_decompress_struct, buf []uint8, stride int) {
-	var rowPtr C.JSAMPROW                             // pointer to pixel lines
-	arrayPtr := C.JSAMPARRAY(unsafe.Pointer(&rowPtr)) // pointer to row pointers
-
 	C.jpeg_start_decompress(dinfo)
 	for dinfo.output_scanline < dinfo.output_height {
-		rowPtr = C.JSAMPROW(unsafe.Pointer(&buf[stride*int(dinfo.output_scanline)]))
-		C.jpeg_read_scanlines(dinfo, arrayPtr, C.JDIMENSION(dinfo.rec_outbuf_height))
+		var rowPtr = C.JSAMPROW(unsafe.Pointer(&buf[stride*int(dinfo.output_scanline)]))
+		C.jpeg_read_scanline(dinfo, rowPtr, C.JDIMENSION(dinfo.rec_outbuf_height))
 	}
 	C.jpeg_finish_decompress(dinfo)
 }
@@ -357,8 +374,7 @@ func setupDecoderOptions(dinfo *C.struct_jpeg_decompress_struct, opt *DecoderOpt
 	}
 }
 
-// AlignSize is the dimension multiple to which data buffers should be aligned.
-const AlignSize int = 16
+const AlignSize int = C.ALIGN_SIZE
 
 // NewYCbCrAligned Allocates YCbCr image with padding.
 // Because LibJPEG needs extra padding to decoding buffer, This func add an
