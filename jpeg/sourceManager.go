@@ -29,14 +29,21 @@ import "C"
 
 import (
 	"io"
+	"sync"
 	"unsafe"
 )
 
 const readBufferSize = 16384
 
+var sourceManagerMapMutex sync.RWMutex
+var sourceManagerMap = make(map[uintptr]*sourceManager)
+
+func GetSourceManagerMapLen() int {
+	return len(sourceManagerMap)
+}
+
 type sourceManager struct {
-	magic       uint32
-	pub         C.struct_jpeg_source_mgr
+	pub         *C.struct_jpeg_source_mgr
 	buffer      [readBufferSize]byte
 	src         io.Reader
 	startOfFile bool
@@ -44,14 +51,9 @@ type sourceManager struct {
 }
 
 func getSourceManager(dinfo *C.struct_jpeg_decompress_struct) (ret *sourceManager) {
-	// unsafe upcast magic to get the sourceManager associated with a dinfo
-	ret = (*sourceManager)(unsafe.Pointer(uintptr(unsafe.Pointer(dinfo.src)) - unsafe.Offsetof(sourceManager{}.pub)))
-	// just in case this ever breaks in a future release for some reason,
-	// check the magic
-	if ret.magic != magic {
-		panic("Invalid sourceManager magic; upcast failed.")
-	}
-	return
+	sourceManagerMapMutex.RLock()
+	defer sourceManagerMapMutex.RUnlock()
+	return sourceManagerMap[uintptr(unsafe.Pointer(dinfo.src))]
 }
 
 //export sourceInit
@@ -108,12 +110,12 @@ func sourceFill(dinfo *C.struct_jpeg_decompress_struct) C.boolean {
 }
 
 func makeSourceManager(src io.Reader, dinfo *C.struct_jpeg_decompress_struct) (mgr *sourceManager) {
-	mgr = (*sourceManager)(C.malloc(C.size_t(unsafe.Sizeof(sourceManager{}))))
-	if mgr == nil {
-		panic("Failed to allocate sourceManager")
-	}
-	mgr.magic = magic
+	mgr = new(sourceManager)
 	mgr.src = src
+	mgr.pub = (*C.struct_jpeg_source_mgr)(C.malloc(C.size_t(unsafe.Sizeof(*mgr.pub))))
+	if mgr.pub == nil {
+		panic("Failed to allocate C.struct_jpeg_source_mgr")
+	}
 	mgr.pub.init_source = (*[0]byte)(C.sourceInit)
 	mgr.pub.fill_input_buffer = (*[0]byte)(C.sourceFill)
 	mgr.pub.skip_input_data = (*[0]byte)(C.sourceSkip)
@@ -121,10 +123,21 @@ func makeSourceManager(src io.Reader, dinfo *C.struct_jpeg_decompress_struct) (m
 	mgr.pub.term_source = (*[0]byte)(C.sourceTerm)
 	mgr.pub.bytes_in_buffer = 0
 	mgr.pub.next_input_byte = nil
-	dinfo.src = &mgr.pub
+	dinfo.src = mgr.pub
+
+	sourceManagerMapMutex.Lock()
+	defer sourceManagerMapMutex.Unlock()
+	sourceManagerMap[uintptr(unsafe.Pointer(mgr.pub))] = mgr
+
 	return
 }
 
 func releaseSourceManager(mgr *sourceManager) {
-	C.free(unsafe.Pointer(mgr))
+	sourceManagerMapMutex.Lock()
+	defer sourceManagerMapMutex.Unlock()
+	var key = uintptr(unsafe.Pointer(mgr.pub))
+	if _, ok := sourceManagerMap[key]; ok {
+		delete(sourceManagerMap, key)
+		C.free(unsafe.Pointer(mgr.pub))
+	}
 }

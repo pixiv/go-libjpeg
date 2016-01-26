@@ -24,9 +24,6 @@ const (
 	Cr = 2
 )
 
-// magic is used to ensure that the unsafe upcast magic actually works as intended
-const magic uint32 = 0xdeadbeef
-
 // DCTMethod is the DCT/IDCT method type.
 type DCTMethod C.J_DCT_METHOD
 

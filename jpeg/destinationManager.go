@@ -22,27 +22,29 @@ import "C"
 
 import (
 	"io"
+	"sync"
 	"unsafe"
 )
 
 const writeBufferSize = 16384
 
+var destinationManagerMapMutex sync.RWMutex
+var destinationManagerMap = make(map[uintptr]*destinationManager)
+
+func GetDestinationManagerMapLen() int {
+	return len(destinationManagerMap)
+}
+
 type destinationManager struct {
-	magic  uint32
-	pub    C.struct_jpeg_destination_mgr
+	pub    *C.struct_jpeg_destination_mgr
 	buffer [writeBufferSize]byte
 	dest   io.Writer
 }
 
 func getDestinationManager(cinfo *C.struct_jpeg_compress_struct) (ret *destinationManager) {
-	// unsafe upcast magic to get the destinationManager associated with a cinfo
-	ret = (*destinationManager)(unsafe.Pointer(uintptr(unsafe.Pointer(cinfo.dest)) - unsafe.Offsetof(destinationManager{}.pub)))
-	// just in case this ever breaks in a future release for some reason,
-	// check the magic
-	if ret.magic != magic {
-		panic("Invalid destinationManager magic; upcast failed.")
-	}
-	return
+	destinationManagerMapMutex.RLock()
+	defer destinationManagerMapMutex.RUnlock()
+	return destinationManagerMap[uintptr(unsafe.Pointer(cinfo.dest))]
 }
 
 //export destinationInit
@@ -81,21 +83,32 @@ func destinationTerm(cinfo *C.struct_jpeg_compress_struct) {
 }
 
 func makeDestinationManager(dest io.Writer, cinfo *C.struct_jpeg_compress_struct) (mgr *destinationManager) {
-	mgr = (*destinationManager)(C.malloc(C.size_t(unsafe.Sizeof(destinationManager{}))))
-	if mgr == nil {
-		panic("Failed to allocate destinationManager")
-	}
-	mgr.magic = magic
+	mgr = new(destinationManager)
 	mgr.dest = dest
+	mgr.pub = (*C.struct_jpeg_destination_mgr)(C.malloc(C.size_t(unsafe.Sizeof(*mgr.pub))))
+	if mgr.pub == nil {
+		panic("Failed to allocate C.struct_jpeg_destination_mgr")
+	}
 	mgr.pub.init_destination = (*[0]byte)(C.destinationInit)
 	mgr.pub.empty_output_buffer = (*[0]byte)(C.destinationEmpty)
 	mgr.pub.term_destination = (*[0]byte)(C.destinationTerm)
 	mgr.pub.free_in_buffer = writeBufferSize
 	mgr.pub.next_output_byte = (*C.JOCTET)(&mgr.buffer[0])
-	cinfo.dest = &mgr.pub
+	cinfo.dest = mgr.pub
+
+	destinationManagerMapMutex.Lock()
+	defer destinationManagerMapMutex.Unlock()
+	destinationManagerMap[uintptr(unsafe.Pointer(mgr.pub))] = mgr
+
 	return
 }
 
 func releaseDestinationManager(mgr *destinationManager) {
-	C.free(unsafe.Pointer(mgr))
+	destinationManagerMapMutex.Lock()
+	defer destinationManagerMapMutex.Unlock()
+	var key = uintptr(unsafe.Pointer(mgr.pub))
+	if _, ok := destinationManagerMap[key]; ok {
+		delete(destinationManagerMap, key)
+		C.free(unsafe.Pointer(mgr.pub))
+	}
 }
