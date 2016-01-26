@@ -26,6 +26,19 @@ var subsampledImageFiles = []string{
 	"checkerboard_420.jpg",
 }
 
+func TestMain(m *testing.M) {
+	result := m.Run()
+	if jpeg.GetSourceManagerMapLen() > 0 {
+		fmt.Println("sourceManager leaked")
+		result = 2
+	}
+	if jpeg.GetDestinationManagerMapLen() > 0 {
+		fmt.Println("destinationManager leaked")
+		result = 2
+	}
+	os.Exit(result)
+}
+
 func delta(u0, u1 uint32) int {
 	d := int(u0) - int(u1)
 	if d < 0 {
