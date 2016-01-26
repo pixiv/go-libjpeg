@@ -45,7 +45,6 @@ static J_COLOR_SPACE getJCS_EXT_RGBA() {
 }
 
 static void decode_gray(j_decompress_ptr dinfo, JSAMPROW pix, int stride, int imcu_rows) {
-	jpeg_component_info comp_info = dinfo->comp_info[0];
 	JSAMPROW *rows = alloca(sizeof(JSAMPROW) * ALIGN_SIZE);
 	while (dinfo->output_scanline < dinfo->output_height) {
 		int h = 0;
@@ -58,8 +57,6 @@ static void decode_gray(j_decompress_ptr dinfo, JSAMPROW pix, int stride, int im
 }
 
 static void decode_ycbcr(j_decompress_ptr dinfo, JSAMPROW y_row, JSAMPROW cb_row, JSAMPROW cr_row, int y_stride, int c_stride, int color_v_div, int imcu_rows) {
-	jpeg_component_info comp_info = dinfo->comp_info[0];
-
 	// Allocate JSAMPIMAGE to hold pointers to one iMCU worth of image data
 	// this is a safe overestimate; we use the return value from
 	// jpeg_read_raw_data to figure out what is the actual iMCU row count.
