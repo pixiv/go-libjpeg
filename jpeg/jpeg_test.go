@@ -2,6 +2,7 @@ package jpeg_test
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"image"
 	"image/color"
@@ -348,5 +349,22 @@ func TestNewYCbCrAlignedWithPortrait(t *testing.T) {
 	}
 	if got.CStride != 48 {
 		t.Errorf("got wrong CStride: %d, expect: 128", got.CStride)
+	}
+}
+
+func TestDecodeFailsWithBlankFile(t *testing.T) {
+	blank := bytes.NewBuffer(nil)
+	_, err := jpeg.Decode(blank, &jpeg.DecoderOptions{})
+	if err == nil {
+		t.Errorf("got no error with blank file")
+	}
+}
+
+func TestEncodeFailsWithEmptyImage(t *testing.T) {
+	dummy := &image.YCbCr{}
+	w := bytes.NewBuffer(nil)
+	err := jpeg.Encode(w, dummy, &jpeg.EncoderOptions{})
+	if err == nil {
+		t.Errorf("got no error with empty image")
 	}
 }
