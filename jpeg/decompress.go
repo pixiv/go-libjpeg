@@ -371,11 +371,11 @@ func setupDecoderOptions(dinfo *C.struct_jpeg_decompress_struct, opt *DecoderOpt
 	}
 }
 
-const AlignSize int = C.ALIGN_SIZE
+const alignSize int = C.ALIGN_SIZE
 
 // NewYCbCrAligned Allocates YCbCr image with padding.
 // Because LibJPEG needs extra padding to decoding buffer, This func add an
-// extra AlignSize (16) padding to cover overflow from any such modes.
+// extra alignSize (16) padding to cover overflow from any such modes.
 func NewYCbCrAligned(r image.Rectangle, subsampleRatio image.YCbCrSubsampleRatio) *image.YCbCr {
 	w, h, cw, ch := r.Dx(), r.Dy(), 0, 0
 	switch subsampleRatio {
@@ -394,10 +394,10 @@ func NewYCbCrAligned(r image.Rectangle, subsampleRatio image.YCbCrSubsampleRatio
 	}
 
 	// TODO: check the padding size to minimize memory allocation.
-	yStride := pad(w, AlignSize) + AlignSize
-	cStride := pad(cw, AlignSize) + AlignSize
-	yHeight := pad(h, AlignSize) + AlignSize
-	cHeight := pad(ch, AlignSize) + AlignSize
+	yStride := pad(w, alignSize) + alignSize
+	cStride := pad(cw, alignSize) + alignSize
+	yHeight := pad(h, alignSize) + alignSize
+	cHeight := pad(ch, alignSize) + alignSize
 
 	b := make([]byte, yStride*yHeight+2*cStride*cHeight)
 	return &image.YCbCr{
@@ -421,8 +421,8 @@ func NewGrayAligned(r image.Rectangle) *image.Gray {
 	w, h := r.Dx(), r.Dy()
 
 	// TODO: check the padding size to minimize memory allocation.
-	stride := pad(w, AlignSize) + AlignSize
-	ph := pad(h, AlignSize) + AlignSize
+	stride := pad(w, alignSize) + alignSize
+	ph := pad(h, alignSize) + alignSize
 
 	pix := make([]uint8, stride*ph)
 	return &image.Gray{
