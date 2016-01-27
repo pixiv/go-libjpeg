@@ -46,8 +46,8 @@ const readBufferSize = 16384
 var sourceManagerMapMutex sync.RWMutex
 var sourceManagerMap = make(map[uintptr]*sourceManager)
 
-// GetSourceManagerMapLen returns the number of globally working sourceManagers for debug.
-func GetSourceManagerMapLen() int {
+// SourceManagerMapLen returns the number of globally working sourceManagers for debug.
+func SourceManagerMapLen() int {
 	return len(sourceManagerMap)
 }
 

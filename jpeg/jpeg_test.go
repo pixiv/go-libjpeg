@@ -28,11 +28,11 @@ var subsampledImageFiles = []string{
 
 func TestMain(m *testing.M) {
 	result := m.Run()
-	if jpeg.GetSourceManagerMapLen() > 0 {
+	if jpeg.SourceManagerMapLen() > 0 {
 		fmt.Println("sourceManager leaked")
 		result = 2
 	}
-	if jpeg.GetDestinationManagerMapLen() > 0 {
+	if jpeg.DestinationManagerMapLen() > 0 {
 		fmt.Println("destinationManager leaked")
 		result = 2
 	}

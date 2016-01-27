@@ -39,8 +39,8 @@ const writeBufferSize = 16384
 var destinationManagerMapMutex sync.RWMutex
 var destinationManagerMap = make(map[uintptr]*destinationManager)
 
-// GetDestinationManagerMapLen returns the number of globally working destinationManagers for debug.
-func GetDestinationManagerMapLen() int {
+// DestinationManagerMapLen returns the number of globally working destinationManagers for debug.
+func DestinationManagerMapLen() int {
 	return len(destinationManagerMap)
 }
 
