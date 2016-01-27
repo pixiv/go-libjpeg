@@ -252,7 +252,7 @@ func DecodeIntoRGB(r io.Reader, options *DecoderOptions) (dest *rgb.Image, err e
 		}
 	}()
 
-	var dinfo = C.new_decompress()
+	dinfo := C.new_decompress()
 	defer C.destroy_decompress(dinfo)
 
 	srcManager := makeSourceManager(r, dinfo)
@@ -282,7 +282,7 @@ func DecodeIntoRGBA(r io.Reader, options *DecoderOptions) (dest *image.RGBA, err
 		}
 	}()
 
-	var dinfo = C.new_decompress()
+	dinfo := C.new_decompress()
 	defer C.destroy_decompress(dinfo)
 
 	srcManager := makeSourceManager(r, dinfo)
@@ -307,7 +307,7 @@ func DecodeIntoRGBA(r io.Reader, options *DecoderOptions) (dest *image.RGBA, err
 func readScanLines(dinfo *C.struct_jpeg_decompress_struct, buf []uint8, stride int) {
 	C.jpeg_start_decompress(dinfo)
 	for dinfo.output_scanline < dinfo.output_height {
-		var rowPtr = C.JSAMPROW(unsafe.Pointer(&buf[stride*int(dinfo.output_scanline)]))
+		rowPtr := C.JSAMPROW(unsafe.Pointer(&buf[stride*int(dinfo.output_scanline)]))
 		C.jpeg_read_scanline(dinfo, rowPtr, C.JDIMENSION(dinfo.rec_outbuf_height))
 	}
 	C.jpeg_finish_decompress(dinfo)
@@ -326,7 +326,7 @@ func DecodeConfig(r io.Reader) (config image.Config, err error) {
 		}
 	}()
 
-	var dinfo = C.new_decompress()
+	dinfo := C.new_decompress()
 	defer C.destroy_decompress(dinfo)
 
 	srcManager := makeSourceManager(r, dinfo)
