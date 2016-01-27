@@ -17,6 +17,14 @@ void destinationInit(struct jpeg_compress_struct*);
 boolean destinationEmpty(struct jpeg_compress_struct*);
 void destinationTerm(struct jpeg_compress_struct*);
 
+static struct jpeg_destination_mgr *malloc_jpeg_destination_mgr() {
+	return malloc(sizeof(struct jpeg_destination_mgr));
+}
+
+static void free_jpeg_destination_mgr(struct jpeg_destination_mgr *p) {
+	free(p);
+}
+
 */
 import "C"
 
@@ -85,7 +93,7 @@ func destinationTerm(cinfo *C.struct_jpeg_compress_struct) {
 func makeDestinationManager(dest io.Writer, cinfo *C.struct_jpeg_compress_struct) (mgr *destinationManager) {
 	mgr = new(destinationManager)
 	mgr.dest = dest
-	mgr.pub = (*C.struct_jpeg_destination_mgr)(C.malloc(C.size_t(unsafe.Sizeof(*mgr.pub))))
+	mgr.pub = C.malloc_jpeg_destination_mgr()
 	if mgr.pub == nil {
 		panic("Failed to allocate C.struct_jpeg_destination_mgr")
 	}
@@ -109,6 +117,6 @@ func releaseDestinationManager(mgr *destinationManager) {
 	var key = uintptr(unsafe.Pointer(mgr.pub))
 	if _, ok := destinationManagerMap[key]; ok {
 		delete(destinationManagerMap, key)
-		C.free(unsafe.Pointer(mgr.pub))
+		C.free_jpeg_destination_mgr(mgr.pub)
 	}
 }
