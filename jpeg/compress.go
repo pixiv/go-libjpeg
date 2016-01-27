@@ -99,7 +99,7 @@ func Encode(w io.Writer, src image.Image, opt *EncoderOptions) (err error) {
 		}
 	}()
 
-	var cinfo *C.struct_jpeg_compress_struct = C.new_compress()
+	cinfo := C.new_compress()
 	defer C.destroy_compress(cinfo)
 
 	dstManager := makeDestinationManager(w, cinfo)

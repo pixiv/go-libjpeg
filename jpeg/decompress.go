@@ -122,7 +122,7 @@ func Decode(r io.Reader, options *DecoderOptions) (dest image.Image, err error) 
 		}
 	}()
 
-	var dinfo *C.struct_jpeg_decompress_struct = C.new_decompress()
+	dinfo := C.new_decompress()
 	defer C.destroy_decompress(dinfo)
 
 	srcManager := makeSourceManager(r, dinfo)
@@ -252,7 +252,7 @@ func DecodeIntoRGB(r io.Reader, options *DecoderOptions) (dest *rgb.Image, err e
 		}
 	}()
 
-	var dinfo *C.struct_jpeg_decompress_struct = C.new_decompress()
+	var dinfo = C.new_decompress()
 	defer C.destroy_decompress(dinfo)
 
 	srcManager := makeSourceManager(r, dinfo)
@@ -282,7 +282,7 @@ func DecodeIntoRGBA(r io.Reader, options *DecoderOptions) (dest *image.RGBA, err
 		}
 	}()
 
-	var dinfo *C.struct_jpeg_decompress_struct = C.new_decompress()
+	var dinfo = C.new_decompress()
 	defer C.destroy_decompress(dinfo)
 
 	srcManager := makeSourceManager(r, dinfo)
@@ -326,7 +326,7 @@ func DecodeConfig(r io.Reader) (config image.Config, err error) {
 		}
 	}()
 
-	var dinfo *C.struct_jpeg_decompress_struct = C.new_decompress()
+	var dinfo = C.new_decompress()
 	defer C.destroy_decompress(dinfo)
 
 	srcManager := makeSourceManager(r, dinfo)
