@@ -12,10 +12,10 @@ static struct jpeg_compress_struct *new_compress() {
 	struct jpeg_compress_struct *cinfo = (struct jpeg_compress_struct *) malloc(sizeof(struct jpeg_compress_struct));
 	struct jpeg_error_mgr *jerr = (struct jpeg_error_mgr *)malloc(sizeof(struct jpeg_error_mgr));
 
-  jpeg_std_error(jerr);
-  jerr->error_exit = (void *)error_panic;
+	jpeg_std_error(jerr);
+	jerr->error_exit = (void *)error_panic;
 	jpeg_create_compress(cinfo);
-  cinfo->err = jerr;
+	cinfo->err = jerr;
 
 	return cinfo;
 }
