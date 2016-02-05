@@ -17,7 +17,7 @@ void destinationInit(struct jpeg_compress_struct*);
 boolean destinationEmpty(struct jpeg_compress_struct*);
 void destinationTerm(struct jpeg_compress_struct*);
 
-static struct jpeg_destination_mgr *malloc_jpeg_destination_mgr() {
+static struct jpeg_destination_mgr *malloc_jpeg_destination_mgr(void) {
 	return malloc(sizeof(struct jpeg_destination_mgr));
 }
 

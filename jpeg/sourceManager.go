@@ -24,7 +24,7 @@ static void* _get_jpeg_resync_to_restart() {
 	return jpeg_resync_to_restart;
 }
 
-static struct jpeg_source_mgr *malloc_jpeg_source_mgr() {
+static struct jpeg_source_mgr *malloc_jpeg_source_mgr(void) {
 	return malloc(sizeof(struct jpeg_source_mgr));
 }
 

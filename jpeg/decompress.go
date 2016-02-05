@@ -8,7 +8,7 @@ package jpeg
 
 void error_panic(j_common_ptr dinfo);
 
-static struct jpeg_decompress_struct *new_decompress() {
+static struct jpeg_decompress_struct *new_decompress(void) {
 	struct jpeg_decompress_struct *dinfo = (struct jpeg_decompress_struct *)malloc(sizeof(struct jpeg_decompress_struct));
 	struct jpeg_error_mgr *jerr = (struct jpeg_error_mgr *)malloc(sizeof(struct jpeg_error_mgr));
 
@@ -37,7 +37,7 @@ static int DCT_v_scaled_size(j_decompress_ptr dinfo, int component) {
 #endif
 }
 
-static J_COLOR_SPACE getJCS_EXT_RGBA() {
+static J_COLOR_SPACE getJCS_EXT_RGBA(void) {
 #ifdef JCS_EXT_RGBA
 	return JCS_EXT_RGBA;
 #endif

@@ -8,7 +8,7 @@ package jpeg
 
 void error_panic(j_common_ptr cinfo);
 
-static struct jpeg_compress_struct *new_compress() {
+static struct jpeg_compress_struct *new_compress(void) {
 	struct jpeg_compress_struct *cinfo = (struct jpeg_compress_struct *) malloc(sizeof(struct jpeg_compress_struct));
 	struct jpeg_error_mgr *jerr = (struct jpeg_error_mgr *)malloc(sizeof(struct jpeg_error_mgr));
 
