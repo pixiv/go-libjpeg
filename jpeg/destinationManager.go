@@ -46,7 +46,7 @@ func DestinationManagerMapLen() int {
 
 type destinationManager struct {
 	pub    *C.struct_jpeg_destination_mgr
-	buffer [writeBufferSize]byte
+	buffer unsafe.Pointer
 	dest   io.Writer
 }
 
@@ -64,7 +64,8 @@ func destinationInit(cinfo *C.struct_jpeg_compress_struct) {
 func flushBuffer(mgr *destinationManager, inBuffer int) {
 	wrote := 0
 	for wrote != inBuffer {
-		bytes, err := mgr.dest.Write(mgr.buffer[wrote:inBuffer])
+		slice := C.GoBytes(unsafe.Pointer(uintptr(mgr.buffer)+uintptr(wrote)), C.int(inBuffer-wrote))
+		bytes, err := mgr.dest.Write(slice)
 		if err != nil {
 			releaseDestinationManager(mgr)
 			panic(err)
@@ -72,7 +73,7 @@ func flushBuffer(mgr *destinationManager, inBuffer int) {
 		wrote += int(bytes)
 	}
 	mgr.pub.free_in_buffer = writeBufferSize
-	mgr.pub.next_output_byte = (*C.JOCTET)(&mgr.buffer[0])
+	mgr.pub.next_output_byte = (*C.JOCTET)(mgr.buffer)
 }
 
 //export destinationEmpty
@@ -98,11 +99,15 @@ func makeDestinationManager(dest io.Writer, cinfo *C.struct_jpeg_compress_struct
 	if mgr.pub == nil {
 		panic("Failed to allocate C.struct_jpeg_destination_mgr")
 	}
+	mgr.buffer = C.malloc(writeBufferSize)
+	if mgr.buffer == nil {
+		panic("Failed to allocate buffer")
+	}
 	mgr.pub.init_destination = (*[0]byte)(C.destinationInit)
 	mgr.pub.empty_output_buffer = (*[0]byte)(C.destinationEmpty)
 	mgr.pub.term_destination = (*[0]byte)(C.destinationTerm)
 	mgr.pub.free_in_buffer = writeBufferSize
-	mgr.pub.next_output_byte = (*C.JOCTET)(&mgr.buffer[0])
+	mgr.pub.next_output_byte = (*C.JOCTET)(mgr.buffer)
 	cinfo.dest = mgr.pub
 
 	destinationManagerMapMutex.Lock()
@@ -119,5 +124,6 @@ func releaseDestinationManager(mgr *destinationManager) {
 	if _, ok := destinationManagerMap[key]; ok {
 		delete(destinationManagerMap, key)
 		C.free_jpeg_destination_mgr(mgr.pub)
+		C.free(mgr.buffer)
 	}
 }
