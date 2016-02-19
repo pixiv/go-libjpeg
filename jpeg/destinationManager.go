@@ -17,32 +17,43 @@ void destinationInit(struct jpeg_compress_struct*);
 boolean destinationEmpty(struct jpeg_compress_struct*);
 void destinationTerm(struct jpeg_compress_struct*);
 
+static struct jpeg_destination_mgr *malloc_jpeg_destination_mgr(void) {
+	return malloc(sizeof(struct jpeg_destination_mgr));
+}
+
+static void free_jpeg_destination_mgr(struct jpeg_destination_mgr *p) {
+	free(p);
+}
+
 */
 import "C"
 
 import (
 	"io"
+	"sync"
 	"unsafe"
 )
 
 const writeBufferSize = 16384
 
+var destinationManagerMapMutex sync.RWMutex
+var destinationManagerMap = make(map[uintptr]*destinationManager)
+
+// DestinationManagerMapLen returns the number of globally working destinationManagers for debug.
+func DestinationManagerMapLen() int {
+	return len(destinationManagerMap)
+}
+
 type destinationManager struct {
-	magic  uint32
-	pub    C.struct_jpeg_destination_mgr
-	buffer [writeBufferSize]byte
+	pub    *C.struct_jpeg_destination_mgr
+	buffer unsafe.Pointer
 	dest   io.Writer
 }
 
 func getDestinationManager(cinfo *C.struct_jpeg_compress_struct) (ret *destinationManager) {
-	// unsafe upcast magic to get the destinationManager associated with a cinfo
-	ret = (*destinationManager)(unsafe.Pointer(uintptr(unsafe.Pointer(cinfo.dest)) - unsafe.Offsetof(destinationManager{}.pub)))
-	// just in case this ever breaks in a future release for some reason,
-	// check the magic
-	if ret.magic != magic {
-		panic("Invalid destinationManager magic; upcast failed.")
-	}
-	return
+	destinationManagerMapMutex.RLock()
+	defer destinationManagerMapMutex.RUnlock()
+	return destinationManagerMap[uintptr(unsafe.Pointer(cinfo.dest))]
 }
 
 //export destinationInit
@@ -53,14 +64,16 @@ func destinationInit(cinfo *C.struct_jpeg_compress_struct) {
 func flushBuffer(mgr *destinationManager, inBuffer int) {
 	wrote := 0
 	for wrote != inBuffer {
-		bytes, err := mgr.dest.Write(mgr.buffer[wrote:inBuffer])
+		slice := C.GoBytes(unsafe.Pointer(uintptr(mgr.buffer)+uintptr(wrote)), C.int(inBuffer-wrote))
+		bytes, err := mgr.dest.Write(slice)
 		if err != nil {
+			releaseDestinationManager(mgr)
 			panic(err)
 		}
 		wrote += int(bytes)
 	}
 	mgr.pub.free_in_buffer = writeBufferSize
-	mgr.pub.next_output_byte = (*C.JOCTET)(&mgr.buffer[0])
+	mgr.pub.next_output_byte = (*C.JOCTET)(mgr.buffer)
 }
 
 //export destinationEmpty
@@ -79,14 +92,38 @@ func destinationTerm(cinfo *C.struct_jpeg_compress_struct) {
 	flushBuffer(mgr, inBuffer)
 }
 
-func makeDestinationManager(dest io.Writer, cinfo *C.struct_jpeg_compress_struct) (ret destinationManager) {
-	ret.magic = magic
-	ret.dest = dest
-	ret.pub.init_destination = (*[0]byte)(C.destinationInit)
-	ret.pub.empty_output_buffer = (*[0]byte)(C.destinationEmpty)
-	ret.pub.term_destination = (*[0]byte)(C.destinationTerm)
-	ret.pub.free_in_buffer = writeBufferSize
-	ret.pub.next_output_byte = (*C.JOCTET)(&ret.buffer[0])
-	cinfo.dest = &ret.pub
+func makeDestinationManager(dest io.Writer, cinfo *C.struct_jpeg_compress_struct) (mgr *destinationManager) {
+	mgr = new(destinationManager)
+	mgr.dest = dest
+	mgr.pub = C.malloc_jpeg_destination_mgr()
+	if mgr.pub == nil {
+		panic("Failed to allocate C.struct_jpeg_destination_mgr")
+	}
+	mgr.buffer = C.malloc(writeBufferSize)
+	if mgr.buffer == nil {
+		panic("Failed to allocate buffer")
+	}
+	mgr.pub.init_destination = (*[0]byte)(C.destinationInit)
+	mgr.pub.empty_output_buffer = (*[0]byte)(C.destinationEmpty)
+	mgr.pub.term_destination = (*[0]byte)(C.destinationTerm)
+	mgr.pub.free_in_buffer = writeBufferSize
+	mgr.pub.next_output_byte = (*C.JOCTET)(mgr.buffer)
+	cinfo.dest = mgr.pub
+
+	destinationManagerMapMutex.Lock()
+	defer destinationManagerMapMutex.Unlock()
+	destinationManagerMap[uintptr(unsafe.Pointer(mgr.pub))] = mgr
+
 	return
+}
+
+func releaseDestinationManager(mgr *destinationManager) {
+	destinationManagerMapMutex.Lock()
+	defer destinationManagerMapMutex.Unlock()
+	var key = uintptr(unsafe.Pointer(mgr.pub))
+	if _, ok := destinationManagerMap[key]; ok {
+		delete(destinationManagerMap, key)
+		C.free_jpeg_destination_mgr(mgr.pub)
+		C.free(mgr.buffer)
+	}
 }
