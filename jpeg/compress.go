@@ -23,6 +23,7 @@ static struct jpeg_compress_struct *new_compress(void) {
 static void destroy_compress(struct jpeg_compress_struct *cinfo) {
 	free(cinfo->err);
 	jpeg_destroy_compress(cinfo);
+	free(cinfo);
 }
 
 static void encode_gray(j_compress_ptr cinfo, JSAMPROW pix, int stride) {
