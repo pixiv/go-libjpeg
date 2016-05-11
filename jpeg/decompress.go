@@ -12,10 +12,10 @@ static struct jpeg_decompress_struct *new_decompress(void) {
 	struct jpeg_decompress_struct *dinfo = (struct jpeg_decompress_struct *)malloc(sizeof(struct jpeg_decompress_struct));
 	struct jpeg_error_mgr *jerr = (struct jpeg_error_mgr *)malloc(sizeof(struct jpeg_error_mgr));
 
-  jpeg_std_error(jerr);
-  jerr->error_exit = (void *)error_panic;
+	jpeg_std_error(jerr);
+	jerr->error_exit = (void *)error_panic;
 	jpeg_create_decompress(dinfo);
-  dinfo->err = jerr;
+	dinfo->err = jerr;
 
 	return dinfo;
 }
@@ -23,10 +23,11 @@ static struct jpeg_decompress_struct *new_decompress(void) {
 static void destroy_decompress(struct jpeg_decompress_struct *dinfo) {
 	free(dinfo->err);
 	jpeg_destroy_decompress(dinfo);
+	free(dinfo);
 }
 
 static JDIMENSION jpeg_read_scanline(j_decompress_ptr dinfo, JSAMPROW row, JDIMENSION max_lines) {
-  return jpeg_read_scanlines(dinfo, &row, max_lines);
+	return jpeg_read_scanlines(dinfo, &row, max_lines);
 }
 
 static int DCT_v_scaled_size(j_decompress_ptr dinfo, int component) {
