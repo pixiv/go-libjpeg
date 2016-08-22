@@ -39,7 +39,7 @@ static int DCT_v_scaled_size(j_decompress_ptr dinfo, int component) {
 }
 
 static J_COLOR_SPACE getJCS_EXT_RGBA(void) {
-#ifdef JCS_EXT_RGBA
+#ifdef JCS_ALPHA_EXTENSIONS
 	return JCS_EXT_RGBA;
 #endif
   return JCS_UNKNOWN;
