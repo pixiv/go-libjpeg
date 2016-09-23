@@ -11,15 +11,17 @@ and rewritten to compatible with image.Image interface.
 ## Usage
 
 ```
-import "github.com/pixiv/go-libjpeg"
+import "github.com/pixiv/go-libjpeg/jpeg"
 
 func main() {
     // Decoding JPEG into image.Image
-    io := os.Open("in.jpg")
+    io, err := os.Open("in.jpg")
+    if err != nil {
+        log.Fatal(err)
+    }
     img, err := jpeg.Decode(io, &jpeg.DecoderOptions{})
     if err != nil {
-        log.Printf("Decode returns error: %v\n", err)
-        return
+        log.Fatalf("Decode returns error: %v\n", err)
     }
 
     // Encode JPEG
