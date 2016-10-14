@@ -47,7 +47,8 @@ static void encode_gray(j_compress_ptr cinfo, JSAMPROW pix, int stride) {
 static void encode_rgba(j_compress_ptr cinfo, unsigned char pix[], int stride) {
 	JSAMPROW row_pointer[1];
 
-	for (int v = 0; v < cinfo->image_height; v++) {
+	int v;
+	for (v = 0; v < cinfo->image_height; v++) {
 		row_pointer[0] = &pix[v * stride];
 		jpeg_write_scanlines(cinfo, row_pointer, 1);
 	}
@@ -200,7 +201,7 @@ func encodeRGBA(cinfo *C.struct_jpeg_compress_struct, src *image.RGBA, p *Encode
 
 	// Start compression
 	C.jpeg_start_compress(cinfo, C.TRUE)
-	C.encode_rgba(cinfo, (*C.uchar)(C.CBytes(src.Pix)), C.int(src.Stride))
+	C.encode_rgba(cinfo, (*C.uchar)(unsafe.Pointer(&src.Pix[0])), C.int(src.Stride))
 	C.jpeg_finish_compress(cinfo)
 	return
 }
