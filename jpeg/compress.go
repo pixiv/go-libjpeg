@@ -44,6 +44,16 @@ static void encode_gray(j_compress_ptr cinfo, JSAMPROW pix, int stride) {
 	}
 }
 
+static void encode_rgba(j_compress_ptr cinfo, unsigned char pix[], int stride) {
+	JSAMPROW row_pointer[1];
+
+	for (int v = 0; v < cinfo->image_height; v++) {
+		row_pointer[0] = &pix[v * stride];
+		jpeg_write_scanlines(cinfo, row_pointer, 1);
+	}
+}
+
+
 static void encode_ycbcr(j_compress_ptr cinfo, JSAMPROW y_row, JSAMPROW cb_row, JSAMPROW cr_row, int y_stride, int c_stride, int color_v_div) {
 	// Allocate JSAMPIMAGE to hold pointers to one iMCU worth of image data
 	// this is a safe overestimate; we use the return value from
@@ -111,6 +121,8 @@ func Encode(w io.Writer, src image.Image, opt *EncoderOptions) (err error) {
 		err = encodeYCbCr(cinfo, s, opt)
 	case *image.Gray:
 		err = encodeGray(cinfo, s, opt)
+	case *image.RGBA:
+		err = encodeRGBA(cinfo, s, opt)
 	default:
 		return errors.New("unsupported image type")
 	}
@@ -171,6 +183,24 @@ func encodeYCbCr(cinfo *C.struct_jpeg_compress_struct, src *image.YCbCr, p *Enco
 		C.int(src.CStride),
 		C.int(colorVDiv),
 	)
+	C.jpeg_finish_compress(cinfo)
+	return
+}
+
+// encode image.RGBA
+func encodeRGBA(cinfo *C.struct_jpeg_compress_struct, src *image.RGBA, p *EncoderOptions) (err error) {
+	// Set up compression parameters
+	cinfo.image_width = C.JDIMENSION(src.Bounds().Dx())
+	cinfo.image_height = C.JDIMENSION(src.Bounds().Dy())
+	cinfo.input_components = 4
+	cinfo.in_color_space = C.JCS_EXT_RGBA
+
+	C.jpeg_set_defaults(cinfo)
+	setupEncoderOptions(cinfo, p)
+
+	// Start compression
+	C.jpeg_start_compress(cinfo, C.TRUE)
+	C.encode_rgba(cinfo, (*C.uchar)(C.CBytes(src.Pix)), C.int(src.Stride))
 	C.jpeg_finish_compress(cinfo)
 	return
 }
