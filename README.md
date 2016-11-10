@@ -69,7 +69,7 @@ With libjpeg-turbo, it can make more faster (about 4.8x faster than image/jpeg).
 
 ### Dependencies
 
-* Go 1.3 (needed for cgo features)
+* Go 1.6 or later.
 * libjpeg (preferably libjpeg-turbo)
 
     DecodeIntoRGBA can only work if go-libjpeg is built with libjpeg-turbo.
