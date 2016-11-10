@@ -44,13 +44,13 @@ static void encode_gray(j_compress_ptr cinfo, JSAMPROW pix, int stride) {
 	}
 }
 
-static void encode_rgba(j_compress_ptr cinfo, unsigned char pix[], int stride) {
-	JSAMPROW row_pointer[1];
+static void encode_rgba(j_compress_ptr cinfo, JSAMPROW pix, int stride) {
+	JSAMPROW rows[1];
 
 	int v;
-	for (v = 0; v < cinfo->image_height; v++) {
-		row_pointer[0] = &pix[v * stride];
-		jpeg_write_scanlines(cinfo, row_pointer, 1);
+	for (v = 0; v < cinfo->image_height; ) {
+		rows[0] = &pix[v * stride];
+		v += jpeg_write_scanlines(cinfo, rows, 1);
 	}
 }
 
@@ -194,9 +194,9 @@ func encodeRGBA(cinfo *C.struct_jpeg_compress_struct, src *image.RGBA, p *Encode
 	cinfo.image_width = C.JDIMENSION(src.Bounds().Dx())
 	cinfo.image_height = C.JDIMENSION(src.Bounds().Dy())
 	cinfo.input_components = 4
-	cinfo.in_color_space = C.getJCS_EXT_RGBA()
+	cinfo.in_color_space = getJCS_EXT_RGBA()
 	if cinfo.in_color_space == C.JCS_UNKNOWN {
-		return nil, errors.New("JCS_EXT_RGBA is not supported (probably built without libjpeg-trubo)")
+		return errors.New("JCS_EXT_RGBA is not supported (probably built without libjpeg-trubo)")
 	}
 
 	C.jpeg_set_defaults(cinfo)
@@ -204,7 +204,7 @@ func encodeRGBA(cinfo *C.struct_jpeg_compress_struct, src *image.RGBA, p *Encode
 
 	// Start compression
 	C.jpeg_start_compress(cinfo, C.TRUE)
-	C.encode_rgba(cinfo, (*C.uchar)(unsafe.Pointer(&src.Pix[0])), C.int(src.Stride))
+	C.encode_rgba(cinfo, C.JSAMPROW(unsafe.Pointer(&src.Pix[0])), C.int(src.Stride))
 	C.jpeg_finish_compress(cinfo)
 	return
 }
