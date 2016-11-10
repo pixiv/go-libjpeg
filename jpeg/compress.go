@@ -194,7 +194,10 @@ func encodeRGBA(cinfo *C.struct_jpeg_compress_struct, src *image.RGBA, p *Encode
 	cinfo.image_width = C.JDIMENSION(src.Bounds().Dx())
 	cinfo.image_height = C.JDIMENSION(src.Bounds().Dy())
 	cinfo.input_components = 4
-	cinfo.in_color_space = C.JCS_EXT_RGBA
+	cinfo.in_color_space = C.getJCS_EXT_RGBA()
+	if cinfo.in_color_space == C.JCS_UNKNOWN {
+		return nil, errors.New("JCS_EXT_RGBA is not supported (probably built without libjpeg-trubo)")
+	}
 
 	C.jpeg_set_defaults(cinfo)
 	setupEncoderOptions(cinfo, p)
