@@ -14,6 +14,13 @@ package jpeg
 #include <stdio.h>
 #include <jpeglib.h>
 
+static J_COLOR_SPACE getJCS_EXT_RGBA(void) {
+#ifdef JCS_ALPHA_EXTENSIONS
+	return JCS_EXT_RGBA;
+#endif
+  return JCS_UNKNOWN;
+}
+
 */
 import "C"
 
@@ -35,3 +42,7 @@ const (
 	// DCTFloat is floating-point: accurate, fast on fast HW
 	DCTFloat DCTMethod = C.JDCT_FLOAT
 )
+
+func getJCS_EXT_RGBA() C.J_COLOR_SPACE {
+	return C.getJCS_EXT_RGBA()
+}

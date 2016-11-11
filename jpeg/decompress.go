@@ -38,13 +38,6 @@ static int DCT_v_scaled_size(j_decompress_ptr dinfo, int component) {
 #endif
 }
 
-static J_COLOR_SPACE getJCS_EXT_RGBA(void) {
-#ifdef JCS_ALPHA_EXTENSIONS
-	return JCS_EXT_RGBA;
-#endif
-  return JCS_UNKNOWN;
-}
-
 static void decode_gray(j_decompress_ptr dinfo, JSAMPROW pix, int stride, int imcu_rows) {
 	JSAMPROW *rows = alloca(sizeof(JSAMPROW) * ALIGN_SIZE);
 	while (dinfo->output_scanline < dinfo->output_height) {
@@ -104,7 +97,7 @@ type DecoderOptions struct {
 
 // SupportRGBA returns whether RGBA decoding is supported.
 func SupportRGBA() bool {
-	if C.getJCS_EXT_RGBA() == C.JCS_UNKNOWN {
+	if getJCS_EXT_RGBA() == C.JCS_UNKNOWN {
 		return false
 	}
 	return true
@@ -295,7 +288,7 @@ func DecodeIntoRGBA(r io.Reader, options *DecoderOptions) (dest *image.RGBA, err
 	C.jpeg_calc_output_dimensions(dinfo)
 	dest = image.NewRGBA(image.Rect(0, 0, int(dinfo.output_width), int(dinfo.output_height)))
 
-	colorSpace := C.getJCS_EXT_RGBA()
+	colorSpace := getJCS_EXT_RGBA()
 	if colorSpace == C.JCS_UNKNOWN {
 		return nil, errors.New("JCS_EXT_RGBA is not supported (probably built without libjpeg-trubo)")
 	}

@@ -381,3 +381,41 @@ func TestEncodeFailsWithEmptyImage(t *testing.T) {
 		t.Errorf("got no error with empty image")
 	}
 }
+
+func newRGBA() *image.RGBA {
+	rgba := image.NewRGBA(image.Rect(0, 0, 4, 8))
+	for i := 0; i < 4; i++ {
+		for j := 0; j < 4; j++ {
+			rgba.SetRGBA(i, j, color.RGBA{255, 0, 0, 255})
+		}
+		for j := 4; j < 8; j++ {
+			rgba.SetRGBA(i, j, color.RGBA{0, 0, 255, 255})
+		}
+	}
+	return rgba
+}
+
+func TestEncodeRGBA(t *testing.T) {
+	rgba := newRGBA()
+	w := bytes.NewBuffer(nil)
+
+	err := jpeg.Encode(w, rgba, &jpeg.EncoderOptions{
+		Quality: 100,
+	})
+	if err != nil {
+		t.Fatalf("failed to encode: %v", err)
+	}
+
+	decoded, err := jpeg.Decode(w, &jpeg.DecoderOptions{})
+	if err != nil {
+		t.Fatalf("failed to decode: %v", err)
+	}
+
+	diff, err := util.MatchImage(rgba, decoded, 1)
+	if err != nil {
+		t.Errorf("match image: %v", err)
+		util.WritePNG(rgba, "TestEncodeRGBA.want.png")
+		util.WritePNG(decoded, "TestEncodeRGBA.got.png")
+		util.WritePNG(diff, "TestEncodeRGBA.diff.png")
+	}
+}
