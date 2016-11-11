@@ -1,6 +1,7 @@
 go-libjpeg
 ==========
 
+[![GoDoc](https://godoc.org/github.com/pixiv/go-libjpeg/jpeg?status.svg)](https://godoc.org/github.com/pixiv/go-libjpeg/jpeg)
 [![Build Status](https://travis-ci.org/pixiv/go-libjpeg.svg?branch=master)](https://travis-ci.org/pixiv/go-libjpeg)
 
 An implementation of Go binding for LibJpeg (preferably libjpeg-turbo).
