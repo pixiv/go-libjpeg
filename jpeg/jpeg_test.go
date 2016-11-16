@@ -7,6 +7,7 @@ import (
 	"image"
 	"image/color"
 	nativeJPEG "image/jpeg"
+	"io/ioutil"
 	"os"
 	"testing"
 
@@ -417,5 +418,37 @@ func TestEncodeRGBA(t *testing.T) {
 		util.WritePNG(rgba, "TestEncodeRGBA.want.png")
 		util.WritePNG(decoded, "TestEncodeRGBA.got.png")
 		util.WritePNG(diff, "TestEncodeRGBA.diff.png")
+	}
+}
+
+// See: https://github.com/pixiv/go-libjpeg/issues/36
+func TestDecodeAndEncodeRGBADisableFancyUpsampling(t *testing.T) {
+	src := image.NewRGBA(image.Rect(0, 0, 3000, 2000))
+
+	w, err := ioutil.TempFile("", "jpeg_test_")
+	if err != nil {
+		t.Fatalf("failed to create a file: %v", err)
+	}
+	name := w.Name()
+	defer os.Remove(w.Name())
+
+	err = jpeg.Encode(w, src, &jpeg.EncoderOptions{Quality: 95})
+	w.Close()
+	if err != nil {
+		t.Fatalf("faled to encode: %v", err)
+	}
+
+	r, err := os.Open(name)
+	if err != nil {
+		t.Fatalf("failed to open: %v", err)
+	}
+	defer r.Close()
+
+	_, err = jpeg.DecodeIntoRGBA(r, &jpeg.DecoderOptions{
+		DisableBlockSmoothing:  true,
+		DisableFancyUpsampling: true,
+	})
+	if err != nil {
+		t.Fatalf("failed to decode: %v", err)
 	}
 }
