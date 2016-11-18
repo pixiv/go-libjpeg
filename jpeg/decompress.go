@@ -26,8 +26,13 @@ static void destroy_decompress(struct jpeg_decompress_struct *dinfo) {
 	free(dinfo);
 }
 
-static JDIMENSION jpeg_read_scanline(j_decompress_ptr dinfo, JSAMPROW row, JDIMENSION max_lines) {
-	return jpeg_read_scanlines(dinfo, &row, max_lines);
+static JDIMENSION read_scanlines(j_decompress_ptr dinfo, unsigned char *buf, int stride) {
+	JSAMPROW *rows = alloca(sizeof(JSAMPROW) * dinfo->rec_outbuf_height);
+	int i;
+	for (i = 0; i < dinfo->rec_outbuf_height; i++) {
+		rows[i] = &buf[i * stride];
+	}
+	return jpeg_read_scanlines(dinfo, rows, dinfo->rec_outbuf_height);
 }
 
 static int DCT_v_scaled_size(j_decompress_ptr dinfo, int component) {
@@ -301,8 +306,8 @@ func DecodeIntoRGBA(r io.Reader, options *DecoderOptions) (dest *image.RGBA, err
 func readScanLines(dinfo *C.struct_jpeg_decompress_struct, buf []uint8, stride int) {
 	C.jpeg_start_decompress(dinfo)
 	for dinfo.output_scanline < dinfo.output_height {
-		rowPtr := C.JSAMPROW(unsafe.Pointer(&buf[stride*int(dinfo.output_scanline)]))
-		C.jpeg_read_scanline(dinfo, rowPtr, C.JDIMENSION(dinfo.rec_outbuf_height))
+		pbuf := (*C.uchar)(unsafe.Pointer(&buf[stride*int(dinfo.output_scanline)]))
+		C.read_scanlines(dinfo, pbuf, C.int(stride))
 	}
 	C.jpeg_finish_decompress(dinfo)
 }
