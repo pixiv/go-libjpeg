@@ -4,18 +4,26 @@ package jpeg
 #include <stdio.h>
 #include <stdlib.h>
 #include "jpeglib.h"
+#include "jerror.h"
 #include "jpeg.h"
 
 void error_panic(j_common_ptr dinfo);
 
 static struct jpeg_decompress_struct *new_decompress(void) {
 	struct jpeg_decompress_struct *dinfo = (struct jpeg_decompress_struct *)malloc(sizeof(struct jpeg_decompress_struct));
-	struct jpeg_error_mgr *jerr = (struct jpeg_error_mgr *)malloc(sizeof(struct jpeg_error_mgr));
+	if (!dinfo) {
+		return NULL;
+	}
 
-	jpeg_std_error(jerr);
+	struct jpeg_error_mgr *jerr = (struct jpeg_error_mgr *)malloc(sizeof(struct jpeg_error_mgr));
+	if (!jerr) {
+		free(dinfo);
+		return NULL;
+	}
+
+	dinfo->err = jpeg_std_error(jerr);
 	jerr->error_exit = (void *)error_panic;
 	jpeg_create_decompress(dinfo);
-	dinfo->err = jerr;
 
 	return dinfo;
 }
@@ -26,13 +34,13 @@ static void destroy_decompress(struct jpeg_decompress_struct *dinfo) {
 	free(dinfo);
 }
 
-static JDIMENSION read_scanlines(j_decompress_ptr dinfo, unsigned char *buf, int stride) {
-	JSAMPROW *rows = alloca(sizeof(JSAMPROW) * dinfo->rec_outbuf_height);
+static JDIMENSION read_scanlines(j_decompress_ptr dinfo, unsigned char *buf, int stride, int height) {
+	JSAMPROW *rows = alloca(sizeof(JSAMPROW) * height);
 	int i;
-	for (i = 0; i < dinfo->rec_outbuf_height; i++) {
+	for (i = 0; i < height; i++) {
 		rows[i] = &buf[i * stride];
 	}
-	return jpeg_read_scanlines(dinfo, rows, dinfo->rec_outbuf_height);
+	return jpeg_read_scanlines(dinfo, rows, height);
 }
 
 static int DCT_v_scaled_size(j_decompress_ptr dinfo, int component) {
@@ -86,11 +94,30 @@ import (
 	"image"
 	"image/color"
 	"io"
-	"log"
 	"unsafe"
 
 	"github.com/pixiv/go-libjpeg/rgb"
 )
+
+func newDecompress(r io.Reader) *C.struct_jpeg_decompress_struct {
+	dinfo := C.new_decompress()
+	if dinfo == nil {
+		return nil
+	}
+	makeSourceManager(r, dinfo)
+	return dinfo
+}
+
+func destroyDecompress(dinfo *C.struct_jpeg_decompress_struct) {
+	if dinfo == nil {
+		return
+	}
+	sourceManager := getSourceManager(dinfo)
+	if sourceManager != nil {
+		releaseSourceManager(sourceManager)
+	}
+	C.destroy_decompress(dinfo)
+}
 
 // DecoderOptions specifies JPEG decoding parameters.
 type DecoderOptions struct {
@@ -111,21 +138,20 @@ func SupportRGBA() bool {
 // Decode reads a JPEG data stream from r and returns decoded image as an image.Image.
 // Output image has YCbCr colors or 8bit Grayscale.
 func Decode(r io.Reader, options *DecoderOptions) (dest image.Image, err error) {
+	dinfo := newDecompress(r)
+	if dinfo == nil {
+		return nil, errors.New("allocation failed")
+	}
+	defer destroyDecompress(dinfo)
+
 	// Recover panic
 	defer func() {
 		if r := recover(); r != nil {
-			log.Println(r)
 			if _, ok := r.(error); !ok {
 				err = fmt.Errorf("JPEG error: %v", r)
 			}
 		}
 	}()
-
-	dinfo := C.new_decompress()
-	defer C.destroy_decompress(dinfo)
-
-	srcManager := makeSourceManager(r, dinfo)
-	defer releaseSourceManager(srcManager)
 
 	C.jpeg_read_header(dinfo, C.TRUE)
 	setupDecoderOptions(dinfo, options)
@@ -241,21 +267,20 @@ func decodeRGB(dinfo *C.struct_jpeg_decompress_struct) (dest *rgb.Image, err err
 
 // DecodeIntoRGB reads a JPEG data stream from r and returns decoded image as an rgb.Image with RGB colors.
 func DecodeIntoRGB(r io.Reader, options *DecoderOptions) (dest *rgb.Image, err error) {
+	dinfo := newDecompress(r)
+	if dinfo == nil {
+		return nil, errors.New("allocation failed")
+	}
+	defer destroyDecompress(dinfo)
+
 	// Recover panic
 	defer func() {
 		if r := recover(); r != nil {
-			log.Println(r)
 			if _, ok := r.(error); !ok {
 				err = fmt.Errorf("JPEG error: %v", r)
 			}
 		}
 	}()
-
-	dinfo := C.new_decompress()
-	defer C.destroy_decompress(dinfo)
-
-	srcManager := makeSourceManager(r, dinfo)
-	defer releaseSourceManager(srcManager)
 
 	C.jpeg_read_header(dinfo, C.TRUE)
 	setupDecoderOptions(dinfo, options)
@@ -271,21 +296,20 @@ func DecodeIntoRGB(r io.Reader, options *DecoderOptions) (dest *rgb.Image, err e
 // DecodeIntoRGBA reads a JPEG data stream from r and returns decoded image as an image.RGBA with RGBA colors.
 // This function only works with libjpeg-trubo, not libjpeg.
 func DecodeIntoRGBA(r io.Reader, options *DecoderOptions) (dest *image.RGBA, err error) {
+	dinfo := newDecompress(r)
+	if dinfo == nil {
+		return nil, errors.New("allocation failed")
+	}
+	defer destroyDecompress(dinfo)
+
 	// Recover panic
 	defer func() {
 		if r := recover(); r != nil {
-			log.Println(r)
 			if _, ok := r.(error); !ok {
 				err = fmt.Errorf("JPEG error: %v", r)
 			}
 		}
 	}()
-
-	dinfo := C.new_decompress()
-	defer C.destroy_decompress(dinfo)
-
-	srcManager := makeSourceManager(r, dinfo)
-	defer releaseSourceManager(srcManager)
 
 	C.jpeg_read_header(dinfo, C.TRUE)
 	setupDecoderOptions(dinfo, options)
@@ -307,29 +331,28 @@ func readScanLines(dinfo *C.struct_jpeg_decompress_struct, buf []uint8, stride i
 	C.jpeg_start_decompress(dinfo)
 	for dinfo.output_scanline < dinfo.output_height {
 		pbuf := (*C.uchar)(unsafe.Pointer(&buf[stride*int(dinfo.output_scanline)]))
-		C.read_scanlines(dinfo, pbuf, C.int(stride))
+		C.read_scanlines(dinfo, pbuf, C.int(stride), dinfo.rec_outbuf_height)
 	}
 	C.jpeg_finish_decompress(dinfo)
 }
 
 // DecodeConfig returns the color model and dimensions of a JPEG image without decoding the entire image.
 func DecodeConfig(r io.Reader) (config image.Config, err error) {
+	dinfo := newDecompress(r)
+	if dinfo == nil {
+		err = errors.New("allocation failed")
+		return
+	}
+	defer destroyDecompress(dinfo)
+
 	// Recover panic
 	defer func() {
 		if r := recover(); r != nil {
-			var ok bool
-			err, ok = r.(error)
-			if !ok {
+			if _, ok := r.(error); !ok {
 				err = fmt.Errorf("JPEG error: %v", r)
 			}
 		}
 	}()
-
-	dinfo := C.new_decompress()
-	defer C.destroy_decompress(dinfo)
-
-	srcManager := makeSourceManager(r, dinfo)
-	defer releaseSourceManager(srcManager)
 
 	C.jpeg_read_header(dinfo, C.TRUE)
 
