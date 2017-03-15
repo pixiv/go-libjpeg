@@ -17,8 +17,8 @@ void destinationInit(struct jpeg_compress_struct*);
 boolean destinationEmpty(struct jpeg_compress_struct*);
 void destinationTerm(struct jpeg_compress_struct*);
 
-static struct jpeg_destination_mgr *malloc_jpeg_destination_mgr(void) {
-	return malloc(sizeof(struct jpeg_destination_mgr));
+static struct jpeg_destination_mgr *calloc_jpeg_destination_mgr(void) {
+	return calloc(sizeof(struct jpeg_destination_mgr), 1);
 }
 
 static void free_jpeg_destination_mgr(struct jpeg_destination_mgr *p) {
@@ -95,11 +95,11 @@ func destinationTerm(cinfo *C.struct_jpeg_compress_struct) {
 func makeDestinationManager(dest io.Writer, cinfo *C.struct_jpeg_compress_struct) (mgr *destinationManager) {
 	mgr = new(destinationManager)
 	mgr.dest = dest
-	mgr.pub = C.malloc_jpeg_destination_mgr()
+	mgr.pub = C.calloc_jpeg_destination_mgr()
 	if mgr.pub == nil {
 		panic("Failed to allocate C.struct_jpeg_destination_mgr")
 	}
-	mgr.buffer = C.malloc(writeBufferSize)
+	mgr.buffer = C.calloc(writeBufferSize, 1)
 	if mgr.buffer == nil {
 		panic("Failed to allocate buffer")
 	}

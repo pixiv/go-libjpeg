@@ -10,12 +10,12 @@ package jpeg
 void error_panic(j_common_ptr dinfo);
 
 static struct jpeg_decompress_struct *new_decompress(void) {
-	struct jpeg_decompress_struct *dinfo = (struct jpeg_decompress_struct *)malloc(sizeof(struct jpeg_decompress_struct));
+	struct jpeg_decompress_struct *dinfo = (struct jpeg_decompress_struct *)calloc(sizeof(struct jpeg_decompress_struct), 1);
 	if (!dinfo) {
 		return NULL;
 	}
 
-	struct jpeg_error_mgr *jerr = (struct jpeg_error_mgr *)malloc(sizeof(struct jpeg_error_mgr));
+	struct jpeg_error_mgr *jerr = (struct jpeg_error_mgr *)calloc(sizeof(struct jpeg_error_mgr), 1);
 	if (!jerr) {
 		free(dinfo);
 		return NULL;

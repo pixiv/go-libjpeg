@@ -25,8 +25,8 @@ static void* _get_jpeg_resync_to_restart() {
 	return jpeg_resync_to_restart;
 }
 
-static struct jpeg_source_mgr *malloc_jpeg_source_mgr(void) {
-	return malloc(sizeof(struct jpeg_source_mgr));
+static struct jpeg_source_mgr *calloc_jpeg_source_mgr(void) {
+	return calloc(sizeof(struct jpeg_source_mgr), 1);
 }
 
 static void free_jpeg_source_mgr(struct jpeg_source_mgr *p) {
@@ -125,11 +125,11 @@ func sourceFill(dinfo *C.struct_jpeg_decompress_struct) C.boolean {
 func makeSourceManager(src io.Reader, dinfo *C.struct_jpeg_decompress_struct) (mgr *sourceManager) {
 	mgr = new(sourceManager)
 	mgr.src = src
-	mgr.pub = C.malloc_jpeg_source_mgr()
+	mgr.pub = C.calloc_jpeg_source_mgr()
 	if mgr.pub == nil {
 		panic("Failed to allocate C.struct_jpeg_source_mgr")
 	}
-	mgr.buffer = C.malloc(readBufferSize)
+	mgr.buffer = C.calloc(readBufferSize, 1)
 	if mgr.buffer == nil {
 		panic("Failed to allocate buffer")
 	}
