@@ -93,9 +93,10 @@ import (
 
 // EncoderOptions specifies which settings to use during Compression.
 type EncoderOptions struct {
-	Quality        int
-	OptimizeCoding bool
-	DCTMethod      DCTMethod
+	Quality         int
+	OptimizeCoding  bool
+	ProgressiveMode bool
+	DCTMethod       DCTMethod
 }
 
 // Encode encodes src image and writes into w as JPEG format data.
@@ -240,6 +241,9 @@ func setupEncoderOptions(cinfo *C.struct_jpeg_compress_struct, opt *EncoderOptio
 		cinfo.optimize_coding = C.TRUE
 	} else {
 		cinfo.optimize_coding = C.FALSE
+	}
+	if opt.ProgressiveMode {
+		C.jpeg_simple_progression(cinfo)
 	}
 	cinfo.dct_method = C.J_DCT_METHOD(opt.DCTMethod)
 }
