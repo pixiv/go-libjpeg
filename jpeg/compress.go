@@ -197,7 +197,7 @@ func encodeRGBA(cinfo *C.struct_jpeg_compress_struct, src *image.RGBA, p *Encode
 	cinfo.input_components = 4
 	cinfo.in_color_space = getJCS_EXT_RGBA()
 	if cinfo.in_color_space == C.JCS_UNKNOWN {
-		return errors.New("JCS_EXT_RGBA is not supported (probably built without libjpeg-trubo)")
+		return errors.New("JCS_EXT_RGBA is not supported (probably built without libjpeg-turbo)")
 	}
 
 	C.jpeg_set_defaults(cinfo)
