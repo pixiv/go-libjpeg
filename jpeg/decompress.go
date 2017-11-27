@@ -294,7 +294,7 @@ func DecodeIntoRGB(r io.Reader, options *DecoderOptions) (dest *rgb.Image, err e
 }
 
 // DecodeIntoRGBA reads a JPEG data stream from r and returns decoded image as an image.RGBA with RGBA colors.
-// This function only works with libjpeg-trubo, not libjpeg.
+// This function only works with libjpeg-turbo, not libjpeg.
 func DecodeIntoRGBA(r io.Reader, options *DecoderOptions) (dest *image.RGBA, err error) {
 	dinfo := newDecompress(r)
 	if dinfo == nil {
@@ -319,7 +319,7 @@ func DecodeIntoRGBA(r io.Reader, options *DecoderOptions) (dest *image.RGBA, err
 
 	colorSpace := getJCS_EXT_RGBA()
 	if colorSpace == C.JCS_UNKNOWN {
-		return nil, errors.New("JCS_EXT_RGBA is not supported (probably built without libjpeg-trubo)")
+		return nil, errors.New("JCS_EXT_RGBA is not supported (probably built without libjpeg-turbo)")
 	}
 
 	dinfo.out_color_space = colorSpace
