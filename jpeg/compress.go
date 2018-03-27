@@ -97,7 +97,31 @@ type EncoderOptions struct {
 	OptimizeCoding  bool
 	ProgressiveMode bool
 	DCTMethod       DCTMethod
+	Marker          []Marker
 }
+
+// Marker specifies JPEG Marker
+type Marker struct {
+	Tag  MarkerTag
+	Data []byte
+}
+
+// MarkerTag specifies JPEG Marker tag
+type MarkerTag uint16
+
+const (
+	SOI  MarkerTag = 0xFFD8 // Start Of Image
+	SOF0           = 0xFFC0 // Start Of Frame (baseline DCT)
+	SOF2           = 0xFFC2 // Start Of Frame (progressive DCT)
+	DHT            = 0xFFC4 // Define Huffman Table
+	DQT            = 0xFFDB // Define Quantization Table
+	DRI            = 0xFFDD // Define Restart Interval
+	SOS            = 0xFFDA // Start Of Scan
+	RST0           = 0xFFD0 // Restart
+	APP0           = 0xFFE0 // Application-specific
+	COM            = 0xFFFE // Comment
+	EOI            = 0xFFD9 // End Of Image
+)
 
 // Encode encodes src image and writes into w as JPEG format data.
 func Encode(w io.Writer, src image.Image, opt *EncoderOptions) (err error) {
@@ -130,6 +154,17 @@ func Encode(w io.Writer, src image.Image, opt *EncoderOptions) (err error) {
 	}
 
 	return
+}
+
+// write JPEG Markers
+func writeMarker(cinfo *C.struct_jpeg_compress_struct, marker []Marker) {
+	for _, cur := range marker {
+		if cur.Tag == 0 && len(cur.Data) == 0 {
+			// empty marker; skip
+			continue
+		}
+		C.jpeg_write_marker(cinfo, C.int(cur.Tag), (*C.uchar)(&cur.Data[0]), C.uint(len(cur.Data)))
+	}
 }
 
 // encode image.YCbCr
@@ -176,6 +211,7 @@ func encodeYCbCr(cinfo *C.struct_jpeg_compress_struct, src *image.YCbCr, p *Enco
 
 	// Start compression
 	C.jpeg_start_compress(cinfo, C.TRUE)
+	writeMarker(cinfo, p.Marker)
 	C.encode_ycbcr(
 		cinfo,
 		C.JSAMPROW(unsafe.Pointer(&src.Y[0])),
@@ -205,6 +241,7 @@ func encodeRGBA(cinfo *C.struct_jpeg_compress_struct, src *image.RGBA, p *Encode
 
 	// Start compression
 	C.jpeg_start_compress(cinfo, C.TRUE)
+	writeMarker(cinfo, p.Marker)
 	C.encode_rgba(cinfo, C.JSAMPROW(unsafe.Pointer(&src.Pix[0])), C.int(src.Stride))
 	C.jpeg_finish_compress(cinfo)
 	return
@@ -230,6 +267,7 @@ func encodeGray(cinfo *C.struct_jpeg_compress_struct, src *image.Gray, p *Encode
 
 	// Start compression
 	C.jpeg_start_compress(cinfo, C.TRUE)
+	writeMarker(cinfo, p.Marker)
 	C.encode_gray(cinfo, C.JSAMPROW(unsafe.Pointer(&src.Pix[0])), C.int(src.Stride))
 	C.jpeg_finish_compress(cinfo)
 	return

@@ -452,3 +452,43 @@ func TestDecodeAndEncodeRGBADisableFancyUpsampling(t *testing.T) {
 		t.Fatalf("failed to decode: %v", err)
 	}
 }
+
+func TestWriteComment(t *testing.T) {
+	src := image.NewRGBA(image.Rect(0, 0, 320, 240))
+
+	for _, marker := range [][]jpeg.Marker{
+		nil,
+		{},
+		{{}},
+		{{jpeg.COM, []byte("Hello, JPEG Comment")}},
+		{{jpeg.COM, []byte("Hello, JPEG Comment")}, {}},
+		{{jpeg.COM, []byte("Hello, JPEG Comment")}, {jpeg.COM, []byte("JPEG Comment2")}},
+	} {
+		w, err := ioutil.TempFile("", "jpeg_test_")
+		if err != nil {
+			t.Fatalf("failed to create a file :%v", err)
+		}
+		name := w.Name()
+		defer os.Remove(w.Name())
+
+		err = jpeg.Encode(w, src, &jpeg.EncoderOptions{Marker: marker})
+		w.Close()
+		if err != nil {
+			t.Fatalf("failed to encode: %v", err)
+		}
+
+		r, err := os.Open(name)
+		if err != nil {
+			t.Fatalf("failed to open: %v", err)
+		}
+		defer r.Close()
+
+		_, err = jpeg.DecodeIntoRGBA(r, &jpeg.DecoderOptions{
+			DisableBlockSmoothing:  true,
+			DisableFancyUpsampling: true,
+		})
+		if err != nil {
+			t.Fatalf("failed to decode: %v", err)
+		}
+	}
+}
