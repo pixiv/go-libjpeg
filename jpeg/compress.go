@@ -163,7 +163,7 @@ func writeMarker(cinfo *C.struct_jpeg_compress_struct, marker []Marker) {
 			// empty marker; skip
 			continue
 		}
-		C.jpeg_write_marker(cinfo, C.int(cur.Tag), (*C.uchar)(&cur.Data[0]), C.uint(len(cur.Data)))
+		C.jpeg_write_marker(cinfo, C.int(cur.Tag), (*C.JOCTET)(&cur.Data[0]), C.uint(len(cur.Data)))
 	}
 }
 
