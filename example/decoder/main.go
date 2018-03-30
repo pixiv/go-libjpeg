@@ -23,7 +23,7 @@ func main() {
 		log.Fatalln("Got nil")
 	}
 	if err != nil {
-		log.Fatalln("Got Error: %v", err)
+		log.Fatalf("Got Error: %v", err)
 	}
 
 	//
