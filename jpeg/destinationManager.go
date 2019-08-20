@@ -29,6 +29,7 @@ static void free_jpeg_destination_mgr(struct jpeg_destination_mgr *p) {
 import "C"
 
 import (
+	"errors"
 	"io"
 	"sync"
 	"unsafe"
@@ -61,26 +62,29 @@ func destinationInit(cinfo *C.struct_jpeg_compress_struct) {
 	// do nothing
 }
 
-func flushBuffer(mgr *destinationManager, inBuffer int) {
+func flushBuffer(mgr *destinationManager, inBuffer int) error {
 	wrote := 0
 	for wrote != inBuffer {
 		slice := C.GoBytes(unsafe.Pointer(uintptr(mgr.buffer)+uintptr(wrote)), C.int(inBuffer-wrote))
 		bytes, err := mgr.dest.Write(slice)
 		if err != nil {
-			releaseDestinationManager(mgr)
-			panic(err)
+			return err
 		}
-		wrote += int(bytes)
+		wrote += bytes
 	}
 	mgr.pub.free_in_buffer = writeBufferSize
 	mgr.pub.next_output_byte = (*C.JOCTET)(mgr.buffer)
+	return nil
 }
 
 //export destinationEmpty
 func destinationEmpty(cinfo *C.struct_jpeg_compress_struct) C.boolean {
 	// need to write *entire* buffer, not subtracting free_in_buffer
 	mgr := getDestinationManager(cinfo)
-	flushBuffer(mgr, writeBufferSize)
+	err := flushBuffer(mgr, writeBufferSize)
+	if err != nil {
+		return C.FALSE
+	}
 	return C.TRUE
 }
 
@@ -89,19 +93,22 @@ func destinationTerm(cinfo *C.struct_jpeg_compress_struct) {
 	// just empty buffer
 	mgr := getDestinationManager(cinfo)
 	inBuffer := int(writeBufferSize - mgr.pub.free_in_buffer)
-	flushBuffer(mgr, inBuffer)
+	flushBuffer(mgr, inBuffer) // can ignore error here
 }
 
-func makeDestinationManager(dest io.Writer, cinfo *C.struct_jpeg_compress_struct) (mgr *destinationManager) {
+func makeDestinationManager(dest io.Writer, cinfo *C.struct_jpeg_compress_struct) (mgr *destinationManager, err error) {
 	mgr = new(destinationManager)
 	mgr.dest = dest
 	mgr.pub = C.calloc_jpeg_destination_mgr()
 	if mgr.pub == nil {
-		panic("Failed to allocate C.struct_jpeg_destination_mgr")
+		err = errors.New("failed to allocate C.struct_jpeg_destination_mgr")
+		return
 	}
 	mgr.buffer = C.calloc(writeBufferSize, 1)
 	if mgr.buffer == nil {
-		panic("Failed to allocate buffer")
+		C.free_jpeg_destination_mgr(mgr.pub)
+		err = errors.New("failed to allocate buffer")
+		return
 	}
 	mgr.pub.init_destination = (*[0]byte)(C.destinationInit)
 	mgr.pub.empty_output_buffer = (*[0]byte)(C.destinationEmpty)

@@ -99,6 +99,28 @@ type EncoderOptions struct {
 	DCTMethod       DCTMethod
 }
 
+func newCompress(w io.Writer) (cinfo *C.struct_jpeg_compress_struct, err error) {
+	cinfo = C.new_compress()
+	if cinfo == nil {
+		err = errors.New("failed to allocate jpeg encoder")
+		return
+	}
+
+	_, err = makeDestinationManager(w, cinfo)
+	return
+}
+
+func destroyCompress(cinfo *C.struct_jpeg_compress_struct) {
+	if cinfo == nil {
+		return
+	}
+	destinationManager := getDestinationManager(cinfo)
+	if destinationManager != nil {
+		releaseDestinationManager(destinationManager)
+	}
+	C.destroy_compress(cinfo)
+}
+
 // Encode encodes src image and writes into w as JPEG format data.
 func Encode(w io.Writer, src image.Image, opt *EncoderOptions) (err error) {
 	// Recover panic
@@ -112,11 +134,12 @@ func Encode(w io.Writer, src image.Image, opt *EncoderOptions) (err error) {
 		}
 	}()
 
-	cinfo := C.new_compress()
-	defer C.destroy_compress(cinfo)
-
-	dstManager := makeDestinationManager(w, cinfo)
-	defer releaseDestinationManager(dstManager)
+	var cinfo *C.struct_jpeg_compress_struct
+	cinfo, err = newCompress(w)
+	if err != nil {
+		return
+	}
+	defer destroyCompress(cinfo)
 
 	switch s := src.(type) {
 	case *image.YCbCr:
