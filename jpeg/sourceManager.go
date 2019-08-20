@@ -37,10 +37,21 @@ static void free_jpeg_source_mgr(struct jpeg_source_mgr *p) {
 import "C"
 
 import (
+	"errors"
 	"io"
+	"reflect"
 	"sync"
 	"unsafe"
 )
+
+func makePseudoSlice(ptr unsafe.Pointer) []byte {
+	var buffer []byte
+	slice := (*reflect.SliceHeader)(unsafe.Pointer(&buffer))
+	slice.Cap = readBufferSize
+	slice.Len = readBufferSize
+	slice.Data = uintptr(ptr)
+	return buffer
+}
 
 const readBufferSize = 16384
 
@@ -78,7 +89,9 @@ func sourceSkip(dinfo *C.struct_jpeg_decompress_struct, bytes C.long) {
 	if bytes > 0 {
 		for bytes >= C.long(mgr.pub.bytes_in_buffer) {
 			bytes -= C.long(mgr.pub.bytes_in_buffer)
-			sourceFill(dinfo)
+			if sourceFill(dinfo) != C.TRUE {
+				break
+			}
 		}
 	}
 	mgr.pub.bytes_in_buffer -= C.size_t(bytes)
@@ -96,42 +109,40 @@ func sourceTerm(dinfo *C.struct_jpeg_decompress_struct) {
 //export sourceFill
 func sourceFill(dinfo *C.struct_jpeg_decompress_struct) C.boolean {
 	mgr := getSourceManager(dinfo)
-	buffer := [readBufferSize]byte{}
-	bytes, err := mgr.src.Read(buffer[:])
-	C.memcpy(mgr.buffer, unsafe.Pointer(&buffer[0]), C.size_t(bytes))
+	buffer := makePseudoSlice(mgr.buffer)
+	bytes, err := mgr.src.Read(buffer)
 	mgr.pub.bytes_in_buffer = C.size_t(bytes)
 	mgr.currentSize = bytes
 	mgr.pub.next_input_byte = (*C.JOCTET)(mgr.buffer)
 	if err == io.EOF {
 		if bytes == 0 {
 			if mgr.startOfFile {
-				releaseSourceManager(mgr)
-				panic("input is empty")
+				return C.FALSE
 			}
 			// EOF and need more data. Fill in a fake EOI to get a partial image.
-			footer := []byte{0xff, C.JPEG_EOI}
-			C.memcpy(mgr.buffer, unsafe.Pointer(&footer[0]), C.size_t(len(footer)))
-			mgr.pub.bytes_in_buffer = 2
+			mgr.pub.bytes_in_buffer = C.size_t(copy(buffer, []byte{0xff, C.JPEG_EOI}))
 		}
 	} else if err != nil {
-		releaseSourceManager(mgr)
-		panic(err)
+		return C.FALSE
 	}
 	mgr.startOfFile = false
 
 	return C.TRUE
 }
 
-func makeSourceManager(src io.Reader, dinfo *C.struct_jpeg_decompress_struct) (mgr *sourceManager) {
+func makeSourceManager(src io.Reader, dinfo *C.struct_jpeg_decompress_struct) (mgr *sourceManager, err error) {
 	mgr = new(sourceManager)
 	mgr.src = src
 	mgr.pub = C.calloc_jpeg_source_mgr()
 	if mgr.pub == nil {
-		panic("Failed to allocate C.struct_jpeg_source_mgr")
+		err = errors.New("failed to allocate C.struct_jpeg_source_mgr")
+		return
 	}
 	mgr.buffer = C.calloc(readBufferSize, 1)
 	if mgr.buffer == nil {
-		panic("Failed to allocate buffer")
+		C.free_jpeg_source_mgr(mgr.pub)
+		err = errors.New("failed to allocate buffer")
+		return
 	}
 	mgr.pub.init_source = (*[0]byte)(C.sourceInit)
 	mgr.pub.fill_input_buffer = (*[0]byte)(C.sourceFill)
