@@ -135,6 +135,19 @@ static void encode_ycbcr(j_compress_ptr cinfo, JSAMPROW y_row, JSAMPROW cb_row, 
 	}
 }
 
+static int start_compress(j_compress_ptr cinfo, boolean write_all_tables)
+{
+	// handle error
+	struct my_error_mgr *err = (struct my_error_mgr *)cinfo->err;
+	if (setjmp(err->jmpbuf) != 0) {
+		return err->pub.msg_code;
+	}
+
+	jpeg_start_compress(cinfo, write_all_tables);
+
+	return 0;
+}
+
 static int finish_compress(j_compress_ptr cinfo)
 {
 	// handle error
@@ -177,8 +190,12 @@ func newCompress(w io.Writer) (cinfo *C.struct_jpeg_compress_struct, err error) 
 	return
 }
 
-func startCompress(cinfo *C.struct_jpeg_compress_struct) {
-	C.jpeg_start_compress(cinfo, C.TRUE)
+func startCompress(cinfo *C.struct_jpeg_compress_struct) error {
+	code := C.start_compress(cinfo, C.TRUE)
+	if code != 0 {
+		return errors.New(jpegErrorMessage(unsafe.Pointer(cinfo)))
+	}
+	return nil
 }
 
 func destroyCompress(cinfo *C.struct_jpeg_compress_struct) {
@@ -293,7 +310,10 @@ func encodeYCbCr(cinfo *C.struct_jpeg_compress_struct, src *image.YCbCr, p *Enco
 	cinfo.raw_data_in = C.TRUE
 
 	// Start compression
-	startCompress(cinfo)
+	err = startCompress(cinfo)
+	if err != nil {
+		return
+	}
 	defer func() {
 		ferr := finishCompress(cinfo)
 		if ferr != nil && err == nil {
@@ -335,6 +355,9 @@ func encodeRGBA(cinfo *C.struct_jpeg_compress_struct, src *image.RGBA, p *Encode
 
 	// Start compression
 	startCompress(cinfo)
+	if err != nil {
+		return
+	}
 	defer func() {
 		ferr := finishCompress(cinfo)
 		if ferr != nil && err == nil {
@@ -372,6 +395,9 @@ func encodeGray(cinfo *C.struct_jpeg_compress_struct, src *image.Gray, p *Encode
 
 	// Start compression
 	startCompress(cinfo)
+	if err != nil {
+		return
+	}
 	defer func() {
 		ferr := finishCompress(cinfo)
 		if ferr != nil && err == nil {

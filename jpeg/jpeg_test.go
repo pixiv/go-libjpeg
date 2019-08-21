@@ -375,7 +375,6 @@ func TestDecodeFailsWithBlankFile(t *testing.T) {
 }
 
 func TestEncodeFailsWithEmptyImage(t *testing.T) {
-	t.Skip("TODO: check behavior when that Encode passes null to jpeg_start_compress")
 	dummy := &image.YCbCr{}
 	w := bytes.NewBuffer(nil)
 	err := jpeg.Encode(w, dummy, &jpeg.EncoderOptions{})
