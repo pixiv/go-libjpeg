@@ -227,7 +227,7 @@ func TestDecodeAndEncode(t *testing.T) {
 		}()
 
 		if err := jpeg.Encode(w, img, &jpeg.EncoderOptions{Quality: 90}); err != nil {
-			t.Errorf("Encode returns error: %v", err)
+			t.Errorf("%s: Encode returns error: %v", file, err)
 		}
 	}
 }
