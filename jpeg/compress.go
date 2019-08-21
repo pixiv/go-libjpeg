@@ -110,31 +110,6 @@ static JDIMENSION write_mcu_ycbcr(struct jpeg_compress_struct *cinfo, JSAMPROW y
 	return jpeg_write_raw_data(cinfo, image, y_h);
 }
 
-static void encode_ycbcr(j_compress_ptr cinfo, JSAMPROW y_row, JSAMPROW cb_row, JSAMPROW cr_row, int y_stride, int c_stride, int color_v_div) {
-	// Allocate JSAMPIMAGE to hold pointers to one iMCU worth of image data
-	// this is a safe overestimate; we use the return value from
-	// jpeg_read_raw_data to figure out what is the actual iMCU row count.
-	JSAMPROW *y_rows = alloca(sizeof(JSAMPROW) * ALIGN_SIZE);
-	JSAMPROW *cb_rows = alloca(sizeof(JSAMPROW) * ALIGN_SIZE);
-	JSAMPROW *cr_rows = alloca(sizeof(JSAMPROW) * ALIGN_SIZE);
-	JSAMPARRAY image[] = { y_rows, cb_rows, cr_rows };
-
-	int v = 0;
-	for (v = 0; v < cinfo->image_height; ) {
-		int h = 0;
-		// First fill in the pointers into the plane data buffers
-		for (h = 0; h <  DCTSIZE * cinfo->comp_info[0].v_samp_factor; h++) {
-			y_rows[h] = &y_row[y_stride * (v + h)];
-		}
-		for (h = 0; h <  DCTSIZE * cinfo->comp_info[1].v_samp_factor; h++) {
-			cb_rows[h] = &cb_row[c_stride * (v / color_v_div + h)];
-			cr_rows[h] = &cr_row[c_stride * (v / color_v_div + h)];
-		}
-		// Get the data
-		v += jpeg_write_raw_data(cinfo, image, DCTSIZE * cinfo->comp_info[0].v_samp_factor);
-	}
-}
-
 static int start_compress(j_compress_ptr cinfo, boolean write_all_tables)
 {
 	// handle error
