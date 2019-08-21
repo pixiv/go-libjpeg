@@ -354,7 +354,7 @@ func encodeRGBA(cinfo *C.struct_jpeg_compress_struct, src *image.RGBA, p *Encode
 	setupEncoderOptions(cinfo, p)
 
 	// Start compression
-	startCompress(cinfo)
+	err = startCompress(cinfo)
 	if err != nil {
 		return
 	}
@@ -394,7 +394,7 @@ func encodeGray(cinfo *C.struct_jpeg_compress_struct, src *image.Gray, p *Encode
 	cinfo.raw_data_in = C.TRUE
 
 	// Start compression
-	startCompress(cinfo)
+	err = startCompress(cinfo)
 	if err != nil {
 		return
 	}
