@@ -7,7 +7,7 @@ import (
 	"github.com/pixiv/go-libjpeg/jpeg"
 )
 
-var data = []byte("\xff\xd8\xff\xdb\x00C\x000000000000000" +
+var data51 = []byte("\xff\xd8\xff\xdb\x00C\x000000000000000" +
 	"00000000000000000000" +
 	"00000000000000000000" +
 	"00000000000\xff\xc9\x00\v\b00\x000" +
@@ -15,5 +15,5 @@ var data = []byte("\xff\xd8\xff\xdb\x00C\x000000000000000" +
 
 // https://github.com/pixiv/go-libjpeg/issues/51
 func TestIssue51(t *testing.T) {
-	jpeg.Decode(bytes.NewReader(data), &jpeg.DecoderOptions{})
+	jpeg.Decode(bytes.NewReader(data51), &jpeg.DecoderOptions{})
 }
