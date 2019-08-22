@@ -144,6 +144,8 @@ import (
 	"image"
 	"io"
 	"unsafe"
+
+	"github.com/pixiv/go-libjpeg/rgb"
 )
 
 // EncoderOptions specifies which settings to use during Compression.
@@ -235,6 +237,8 @@ func Encode(w io.Writer, src image.Image, opt *EncoderOptions) (err error) {
 		err = encodeGray(cinfo, s, opt)
 	case *image.RGBA:
 		err = encodeRGBA(cinfo, s, opt)
+	case *rgb.Image:
+		err = encodeRGB(cinfo, s, opt)
 	default:
 		return errors.New("unsupported image type")
 	}
@@ -325,6 +329,39 @@ func encodeRGBA(cinfo *C.struct_jpeg_compress_struct, src *image.RGBA, p *Encode
 	if cinfo.in_color_space == C.JCS_UNKNOWN {
 		return errors.New("JCS_EXT_RGBA is not supported (probably built without libjpeg-turbo)")
 	}
+
+	setupEncoderOptions(cinfo, p)
+
+	// Start compression
+	err = startCompress(cinfo)
+	if err != nil {
+		return
+	}
+	defer func() {
+		ferr := finishCompress(cinfo)
+		if ferr != nil && err == nil {
+			err = ferr
+		}
+	}()
+
+	for v := 0; v < h; {
+		line, err := writeScanline(cinfo, C.JSAMPROW(unsafe.Pointer(&src.Pix[v*src.Stride])), C.JDIMENSION(1))
+		if err != nil {
+			return err
+		}
+		v += line
+	}
+	return
+}
+
+// encode rgb.Image.
+func encodeRGB(cinfo *C.struct_jpeg_compress_struct, src *rgb.Image, p *EncoderOptions) (err error) {
+	// Set up compression parameters
+	w, h := src.Bounds().Dx(), src.Bounds().Dy()
+	cinfo.image_width = C.JDIMENSION(w)
+	cinfo.image_height = C.JDIMENSION(h)
+	cinfo.input_components = 3
+	cinfo.in_color_space = C.JCS_RGB
 
 	setupEncoderOptions(cinfo, p)
 
