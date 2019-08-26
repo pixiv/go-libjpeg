@@ -475,15 +475,6 @@ func DecodeConfig(r io.Reader) (config image.Config, err error) {
 	}
 	defer destroyDecompress(dinfo)
 
-	// Recover panic
-	defer func() {
-		if r := recover(); r != nil {
-			if _, ok := r.(error); !ok {
-				err = fmt.Errorf("JPEG error: %v", r)
-			}
-		}
-	}()
-
 	err = readHeader(dinfo)
 	if err != nil {
 		return
