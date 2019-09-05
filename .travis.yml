@@ -8,12 +8,13 @@ go:
   - "1.10"
   - "1.11"
   - "1.12"
+  - "1.13"
   - tip
 
 env:
   - TURBO_VER=""
   - TURBO_VER="1.5.3" CGO_LDFLAGS="-L/tmp/libjpeg-turbo/lib64" CGO_CPPFLAGS="-I/tmp/libjpeg-turbo/include" LD_LIBRARY_PATH="/tmp/libjpeg-turbo/lib64"
-  - TURBO_VER="2.0.2" CGO_LDFLAGS="-L/tmp/libjpeg-turbo/lib64" CGO_CPPFLAGS="-I/tmp/libjpeg-turbo/include" LD_LIBRARY_PATH="/tmp/libjpeg-turbo/lib64"
+  - TURBO_VER="2.0.3" CGO_LDFLAGS="-L/tmp/libjpeg-turbo/lib64" CGO_CPPFLAGS="-I/tmp/libjpeg-turbo/include" LD_LIBRARY_PATH="/tmp/libjpeg-turbo/lib64"
 
 before_install:
   - ./travis-install-libjpeg-turbo.sh "$TURBO_VER"
