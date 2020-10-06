@@ -14,25 +14,17 @@ import (
 )
 
 func TestJpegTran(t *testing.T) {
-	opts := []*jpeg.JpegTranOptions{
-		{Progressive: true, Perfect: true},
-		{Progressive: true, Perfect: true},
-		{Progressive: true, Perfect: true, Transform: jpeg.TransformFlipHorizontal},
-		{Progressive: true, Perfect: true, Transform: jpeg.TransformRotate180},
-		{Progressive: true, Perfect: true, Transform: jpeg.TransformFlipVertical},
-		{Progressive: true, Perfect: true, Transform: jpeg.TransformTranspose},
-		{Progressive: true, Perfect: true, Transform: jpeg.TransformRotate90},
-		{Progressive: true, Perfect: true, Transform: jpeg.TransformTransverse},
-		{Progressive: true, Perfect: true, Transform: jpeg.TransformRotate270},
-	}
-
 	expected, err := jpeg.DecodeIntoRGBA(bytes.NewReader(util.ReadFile("lossless_0.jpg")), &jpeg.DecoderOptions{})
 	if err != nil {
 		t.Fatalf("can't decode expected image: %v", err)
 	}
 
-	for i, opt := range opts {
-		testJpegTranImage(t, fmt.Sprintf("lossless_%d.jpg", i), expected, opt)
+	for i := 0; i <= 8; i++ {
+		testJpegTranImage(t, fmt.Sprintf("lossless_%d.jpg", i), expected, &jpeg.JpegTranOptions{
+			Progressive: true,
+			Perfect:     true,
+			Transform:   jpeg.TransformAuto,
+		})
 	}
 }
 

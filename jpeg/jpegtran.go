@@ -5,6 +5,7 @@ package jpeg
 #include <stdlib.h>
 #include "jpeglib.h"
 #include "transupp.h"
+#include "exif.h"
 */
 import "C"
 import (
@@ -16,7 +17,8 @@ import (
 type Transform int
 
 const (
-	TransformNone Transform = iota
+	TransformAuto Transform = iota
+	TransformNone
 	TransformFlipHorizontal
 	TransformFlipVertical
 	TransformTranspose
@@ -61,6 +63,8 @@ func JpegTran(r io.Reader, w io.Writer, options *JpegTranOptions) error {
 	}
 	defer destroyCompress(dstInfo)
 
+	C.jcopy_markers_setup(srcInfo, C.JCOPYOPT_ALL);
+
 	err = readHeader(srcInfo)
 	if err != nil {
 		return err
@@ -72,6 +76,25 @@ func JpegTran(r io.Reader, w io.Writer, options *JpegTranOptions) error {
 	}
 
 	switch options.Transform {
+	case TransformAuto:
+		switch C.jpegtran_get_orientation(srcInfo) {
+		case 2:
+			transformOption.transform = C.JXFORM_FLIP_H
+		case 3:
+			transformOption.transform = C.JXFORM_ROT_180
+		case 4:
+			transformOption.transform = C.JXFORM_FLIP_V
+		case 5:
+			transformOption.transform = C.JXFORM_TRANSPOSE
+		case 6:
+			transformOption.transform = C.JXFORM_ROT_90
+		case 7:
+			transformOption.transform = C.JXFORM_TRANSVERSE
+		case 8:
+			transformOption.transform = C.JXFORM_ROT_270
+		default:
+			transformOption.transform = C.JXFORM_NONE
+		}
 	case TransformNone:
 		transformOption.transform = C.JXFORM_NONE
 	case TransformFlipHorizontal:
