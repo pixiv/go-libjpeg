@@ -63,7 +63,7 @@ func JpegTran(r io.Reader, w io.Writer, options *JpegTranOptions) error {
 	}
 	defer destroyCompress(dstInfo)
 
-	C.jcopy_markers_setup(srcInfo, C.JCOPYOPT_ALL);
+	C.jcopy_markers_setup(srcInfo, C.JCOPYOPT_ALL)
 
 	err = readHeader(srcInfo)
 	if err != nil {
@@ -133,13 +133,17 @@ func JpegTran(r io.Reader, w io.Writer, options *JpegTranOptions) error {
 
 	dstCoefArrays := C.jtransform_adjust_parameters(srcInfo, dstInfo, srcCoefArrays, &transformOption)
 
-	C.jpeg_write_coefficients(dstInfo, dstCoefArrays)
+	if err := writeCoefficients(dstInfo, dstCoefArrays); err != nil {
+		return err
+	}
 
-	C.jtransform_execute_transformation(srcInfo, dstInfo,
+	C.jtransform_execute_transform(srcInfo, dstInfo,
 		srcCoefArrays,
 		&transformOption)
 
-	C.jpeg_finish_compress(dstInfo)
+	if err := finishCompress(dstInfo); err != nil {
+		return err
+	}
 
 	return nil
 }

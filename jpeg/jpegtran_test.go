@@ -3,6 +3,7 @@ package jpeg_test
 import (
 	"fmt"
 	"image"
+	"io/ioutil"
 
 	"github.com/pixiv/go-libjpeg/jpeg"
 	"github.com/pixiv/go-libjpeg/test/util"
@@ -37,6 +38,10 @@ func testJpegTranImage(t *testing.T, source string, expected *image.RGBA, opt *j
 		var buf bytes.Buffer
 		if err := jpeg.JpegTran(bytes.NewReader(src), &buf, opt); err != nil {
 			t.Fatalf("can't transform image: %v", err)
+		}
+
+		if err := ioutil.WriteFile(util.GetOutFilePath(source), buf.Bytes(), 0644); err != nil {
+			t.Fatalf("can't write result image: %v", err)
 		}
 
 		actual, err := jpeg.DecodeIntoRGBA(&buf, &jpeg.DecoderOptions{})
