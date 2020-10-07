@@ -190,6 +190,14 @@ func readHeader(dinfo *C.struct_jpeg_decompress_struct) error {
 	return nil
 }
 
+func readCoefficients(dinfo *C.struct_jpeg_decompress_struct) (*C.jvirt_barray_ptr, error) {
+	result := C.jpeg_read_coefficients(dinfo)
+	if result == nil {
+		return nil, errors.New(jpegErrorMessage(unsafe.Pointer(dinfo)))
+	}
+	return result, nil
+}
+
 func startDecompress(dinfo *C.struct_jpeg_decompress_struct) error {
 	if C.start_decompress(dinfo) != 0 {
 		return errors.New(jpegErrorMessage(unsafe.Pointer(dinfo)))
