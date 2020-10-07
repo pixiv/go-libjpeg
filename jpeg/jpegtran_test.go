@@ -24,7 +24,7 @@ func TestJpegTran(t *testing.T) {
 		testJpegTranImage(t, fmt.Sprintf("lossless_%d.jpg", i), expected, &jpeg.JpegTranOptions{
 			Progressive: true,
 			Perfect:     true,
-			Transform:   jpeg.TransformAuto,
+			AutoRotate:  true,
 		})
 	}
 }

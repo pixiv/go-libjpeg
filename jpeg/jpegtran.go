@@ -16,28 +16,34 @@ import (
 
 type Transform int
 
+// Constants numbers get from EXIF orientation
 const (
-	TransformAuto Transform = iota
-	TransformNone
-	TransformFlipHorizontal
-	TransformFlipVertical
-	TransformTranspose
-	TransformTransverse
-	TransformRotate90
-	TransformRotate180
-	TransformRotate270
+	TransfromUndefined      Transform = 0
+	TransformNone           Transform = 1
+	TransformFlipHorizontal Transform = 2
+	TransformRotate180      Transform = 3
+	TransformFlipVertical   Transform = 4
+	TransformTranspose      Transform = 5
+	TransformRotate90       Transform = 6
+	TransformTransverse     Transform = 7
+	TransformRotate270      Transform = 8
 )
 
 type JpegTranOptions struct {
 	// Create progressive JPEG file
 	Progressive bool
 	// Fail if there is non-transformable edge blocks
-	Perfect   bool
+	Perfect bool
+	// Autorotate flag for automagically detect transformation by EXIF orientation
+	AutoRotate bool
+	// Image transformation
 	Transform Transform
 }
 
+// Create transform options for safe image processing
 func NewJpegTranOptions() *JpegTranOptions {
 	return &JpegTranOptions{
+		AutoRotate:  true,
 		Progressive: true,
 		Perfect:     true,
 	}
@@ -75,27 +81,17 @@ func JpegTran(r io.Reader, w io.Writer, options *JpegTranOptions) error {
 		transformOption.perfect = 1
 	}
 
-	switch options.Transform {
-	case TransformAuto:
-		switch C.jpegtran_get_orientation(srcInfo) {
-		case 2:
-			transformOption.transform = C.JXFORM_FLIP_H
-		case 3:
-			transformOption.transform = C.JXFORM_ROT_180
-		case 4:
-			transformOption.transform = C.JXFORM_FLIP_V
-		case 5:
-			transformOption.transform = C.JXFORM_TRANSPOSE
-		case 6:
-			transformOption.transform = C.JXFORM_ROT_90
-		case 7:
-			transformOption.transform = C.JXFORM_TRANSVERSE
-		case 8:
-			transformOption.transform = C.JXFORM_ROT_270
-		default:
-			transformOption.transform = C.JXFORM_NONE
+	if options.AutoRotate {
+		orientation := C.jpegtran_get_orientation(srcInfo)
+		if orientation > 0 && orientation <= 8 {
+			options.Transform = Transform(orientation)
+		} else {
+			options.Transform = TransfromUndefined
 		}
-	case TransformNone:
+	}
+
+	switch options.Transform {
+	case TransformNone, TransfromUndefined:
 		transformOption.transform = C.JXFORM_NONE
 	case TransformFlipHorizontal:
 		transformOption.transform = C.JXFORM_FLIP_H
