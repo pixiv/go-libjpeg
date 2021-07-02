@@ -357,7 +357,7 @@ func encodeRGBA(cinfo *C.struct_jpeg_compress_struct, src *image.RGBA, p *Encode
 }
 
 // encode image.NRGBA
-func encodeNRGBA(cinfo *C.struct_jpeg_compress_struct, src *image.RGBA, p *EncoderOptions) (err error) {
+func encodeNRGBA(cinfo *C.struct_jpeg_compress_struct, src *image.NRGBA, p *EncoderOptions) (err error) {
 	// Set up compression parameters
 	w, h := src.Bounds().Dx(), src.Bounds().Dy()
 	cinfo.image_width = C.JDIMENSION(w)
