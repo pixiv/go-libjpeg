@@ -237,6 +237,8 @@ func Encode(w io.Writer, src image.Image, opt *EncoderOptions) (err error) {
 		err = encodeGray(cinfo, s, opt)
 	case *image.RGBA:
 		err = encodeRGBA(cinfo, s, opt)
+	case *image.NRGBA:
+		err = encodeNRGBA(cinfo, s, opt)
 	case *rgb.Image:
 		err = encodeRGB(cinfo, s, opt)
 	default:
@@ -320,6 +322,42 @@ func encodeYCbCr(cinfo *C.struct_jpeg_compress_struct, src *image.YCbCr, p *Enco
 
 // encode image.RGBA
 func encodeRGBA(cinfo *C.struct_jpeg_compress_struct, src *image.RGBA, p *EncoderOptions) (err error) {
+	// Set up compression parameters
+	w, h := src.Bounds().Dx(), src.Bounds().Dy()
+	cinfo.image_width = C.JDIMENSION(w)
+	cinfo.image_height = C.JDIMENSION(h)
+	cinfo.input_components = 4
+	cinfo.in_color_space = getJCS_EXT_RGBA()
+	if cinfo.in_color_space == C.JCS_UNKNOWN {
+		return errors.New("JCS_EXT_RGBA is not supported (probably built without libjpeg-turbo)")
+	}
+
+	setupEncoderOptions(cinfo, p)
+
+	// Start compression
+	err = startCompress(cinfo)
+	if err != nil {
+		return
+	}
+	defer func() {
+		ferr := finishCompress(cinfo)
+		if ferr != nil && err == nil {
+			err = ferr
+		}
+	}()
+
+	for v := 0; v < h; {
+		line, err := writeScanline(cinfo, C.JSAMPROW(unsafe.Pointer(&src.Pix[v*src.Stride])), C.JDIMENSION(1))
+		if err != nil {
+			return err
+		}
+		v += line
+	}
+	return
+}
+
+// encode image.NRGBA
+func encodeNRGBA(cinfo *C.struct_jpeg_compress_struct, src *image.RGBA, p *EncoderOptions) (err error) {
 	// Set up compression parameters
 	w, h := src.Bounds().Dx(), src.Bounds().Dy()
 	cinfo.image_width = C.JDIMENSION(w)
