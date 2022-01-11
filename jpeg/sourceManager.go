@@ -11,7 +11,7 @@ package jpeg
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <jpeglib.h>
+#include "jpeglib.h"
 
 // exported from golang
 void sourceInit(struct jpeg_decompress_struct*);
