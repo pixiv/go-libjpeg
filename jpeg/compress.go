@@ -194,6 +194,11 @@ func finishCompress(cinfo *C.struct_jpeg_compress_struct) error {
 	return nil
 }
 
+func writeCoefficients(cinfo *C.struct_jpeg_compress_struct, coefArrays *C.jvirt_barray_ptr) error {
+	C.jpeg_write_coefficients(cinfo, coefArrays)
+	return nil
+}
+
 func writeScanline(cinfo *C.struct_jpeg_compress_struct, row C.JSAMPROW, maxLines C.JDIMENSION) (line int, err error) {
 	code := C.int(0)
 	line = int(C.write_scanlines(cinfo, row, maxLines, &code))

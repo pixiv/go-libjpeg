@@ -12,7 +12,7 @@ package jpeg
 #cgo LDFLAGS: -ljpeg
 #include <stdlib.h>
 #include <stdio.h>
-#include <jpeglib.h>
+#include "jpeglib.h"
 
 static J_COLOR_SPACE getJCS_EXT_RGBA(void) {
 #ifdef JCS_ALPHA_EXTENSIONS

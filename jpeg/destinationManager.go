@@ -10,7 +10,7 @@ package jpeg
 /*
 #include <stdlib.h>
 #include <stdio.h>
-#include <jpeglib.h>
+#include "jpeglib.h"
 
 // exported from golang
 void destinationInit(struct jpeg_compress_struct*);
